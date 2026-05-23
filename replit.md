@@ -1,45 +1,52 @@
-# [Project name]
+# DyslexiaHeal
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A therapeutic mobile app that helps users improve reading skills through adaptive daily games targeting different types of dyslexia.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/mobile run dev` — start the Expo dev server
 - `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Mobile: Expo (SDK 52) + Expo Router (file-based routing)
+- Storage: AsyncStorage (no backend — all data local)
+- UI: React Native + @expo/vector-icons (Feather)
+- Fonts: @expo-google-fonts/inter (loads in background, system font fallback)
+- Animations: React Native Animated API (useNativeDriver: false for web compat)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/mobile/app/` — Expo Router screens
+  - `(tabs)/` — home, games, progress tab screens
+  - `games/` — game screens + assessment + complete
+  - `onboarding.tsx` — 3-step onboarding flow
+- `artifacts/mobile/context/` — UserContext (profile) + GameContext (daily queue)
+- `artifacts/mobile/constants/games.ts` — game data, word lists, GAME_ROTATIONS
+- `artifacts/mobile/components/` — ProgressBar, GameCard, StatsCard, WeeklyChart
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- No backend — all user state stored in AsyncStorage (`@dyslexia_user_profile_v1`, `@dyslexia_daily_progress_v1`)
+- Font loading does NOT block app render — `SplashScreen.hideAsync()` fires immediately; fonts load in background with system font fallback
+- `useNativeDriver: false` on all Animated calls for web compatibility
+- App flow: launch → check profile → onboarding (if new) → assessment → daily games tab
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- 5-phase assessment identifies dyslexia type (phonological/visual/rapid-naming/surface/mixed) and severity (mild/moderate/severe)
+- 6 therapeutic games: Card Match, Balloon Pop, Letter Sort, Word Scramble, Cake Tower, Memory Sequence
+- Daily 7-game rotation tailored to dyslexia type, tracked with progress bar
+- Weekly progress report with XP, streaks, and accuracy charts
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Dyslexia-friendly UI: high contrast, large touch targets, clean layout, indigo (#6366F1) as primary color
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Do NOT block rendering on font loading — call `SplashScreen.hideAsync()` immediately in useEffect
+- `KeyboardProvider` from react-native-keyboard-controller removed from layout (caused blank screen on web)
+- GAME_ROTATIONS uses 'sequence' as key — maps to `app/games/sequence.tsx`
+- Web preview uses REPLIT_EXPO_DEV_DOMAIN (Expo domain routing), not localhost:80

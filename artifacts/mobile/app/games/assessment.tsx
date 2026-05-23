@@ -9,26 +9,100 @@ import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useUser } from '@/context/UserContext';
 import type { AssessmentResult, DyslexiaType, DyslexiaLevel } from '@/context/UserContext';
-import { RHYME_QUESTIONS, SPELLING_QUESTIONS } from '@/constants/games';
 import * as Haptics from 'expo-haptics';
 
-type Phase = 'intro' | 'visual' | 'phonological' | 'rapid' | 'surface' | 'sequence' | 'result';
+type Phase = 'intro' | 'visual' | 'color' | 'phonological' | 'rapid' | 'surface' | 'sequence' | 'result';
 
-const VISUAL_QUESTIONS = [
+// ── Phase 1: Letter reversal (visual discrimination) ──
+const LETTER_QUESTIONS = [
   { prompt: 'Which letter is "b"?', options: ['d', 'b', 'p', 'q'], answer: 'b' },
   { prompt: 'Which letter is "d"?', options: ['b', 'q', 'd', 'p'], answer: 'd' },
   { prompt: 'Which letter is "p"?', options: ['q', 'b', 'd', 'p'], answer: 'p' },
-  { prompt: 'Which letter is "q"?', options: ['p', 'd', 'q', 'b'], answer: 'q' },
   { prompt: 'Which letter is "n"?', options: ['u', 'm', 'n', 'h'], answer: 'n' },
+  { prompt: 'Which is different from "was"?', options: ['was', 'saw', 'was', 'was'], answer: 'saw' },
 ];
 
+// ── Phase 2: Color & shape discrimination (visual processing) ──
+const COLOR_QUESTIONS: { prompt: string; options: { label: string; color: string }[]; answer: string }[] = [
+  {
+    prompt: 'Which box is a DIFFERENT color from the rest?',
+    options: [
+      { label: 'A', color: '#6366F1' },
+      { label: 'B', color: '#6366F1' },
+      { label: 'C', color: '#EF4444' },
+      { label: 'D', color: '#6366F1' },
+    ],
+    answer: 'C',
+  },
+  {
+    prompt: 'Which box is a DIFFERENT color from the rest?',
+    options: [
+      { label: 'A', color: '#10B981' },
+      { label: 'B', color: '#F59E0B' },
+      { label: 'C', color: '#10B981' },
+      { label: 'D', color: '#10B981' },
+    ],
+    answer: 'B',
+  },
+  {
+    prompt: 'Which color matches RED?',
+    options: [
+      { label: 'A', color: '#F97316' },
+      { label: 'B', color: '#EF4444' },
+      { label: 'C', color: '#EC4899' },
+      { label: 'D', color: '#8B5CF6' },
+    ],
+    answer: 'B',
+  },
+  {
+    prompt: 'Which box is the ODD one out?',
+    options: [
+      { label: 'A', color: '#3B82F6' },
+      { label: 'B', color: '#60A5FA' },
+      { label: 'C', color: '#93C5FD' },
+      { label: 'D', color: '#F59E0B' },
+    ],
+    answer: 'D',
+  },
+  {
+    prompt: 'Which two colors are most similar? Pick the one that stands out.',
+    options: [
+      { label: 'A', color: '#6366F1' },
+      { label: 'B', color: '#6366F1' },
+      { label: 'C', color: '#EF4444' },
+      { label: 'D', color: '#6366F1' },
+    ],
+    answer: 'C',
+  },
+];
+
+// ── Phase 3: Rhyming (phonological) ──
+const RHYME_QUESTIONS = [
+  { prompt: 'Which word rhymes with "CAT"?', options: ['BAT', 'DOG', 'SUN', 'BIG'], answer: 'BAT' },
+  { prompt: 'Which word rhymes with "SUN"?', options: ['CAT', 'RUN', 'BIG', 'HAT'], answer: 'RUN' },
+  { prompt: 'Which word rhymes with "HAT"?', options: ['DOG', 'SUN', 'MAT', 'BIG'], answer: 'MAT' },
+  { prompt: 'Which word rhymes with "HOP"?', options: ['CAT', 'SUN', 'TOP', 'BIG'], answer: 'TOP' },
+  { prompt: 'Which word rhymes with "PIG"?', options: ['CAT', 'SUN', 'HAT', 'JIG'], answer: 'JIG' },
+];
+
+// ── Phase 4: Rapid naming grid (letters + colors) ──
+const RAPID_GRID = ['A', 'T', 'A', 'K', 'A', 'M', 'A', 'R', 'A', 'S', 'A', 'P', 'A', 'W', 'A', 'X'];
+
+// ── Phase 5: Spelling (surface dyslexia) ──
+const SPELLING_QUESTIONS = [
+  { prompt: 'Which spelling is correct?', options: ['THEIR', 'THIER', 'THERE', 'THEAR'], answer: 'THEIR' },
+  { prompt: 'Which spelling is correct?', options: ['WICH', 'WHICH', 'WHICCH', 'WHICK'], answer: 'WHICH' },
+  { prompt: 'Which spelling is correct?', options: ['FREIND', 'FRIEND', 'FREND', 'FRINND'], answer: 'FRIEND' },
+  { prompt: 'Which spelling is correct?', options: ['BECAUS', 'BECAWSE', 'BECAUSE', 'BECUSE'], answer: 'BECAUSE' },
+  { prompt: 'Which spelling is correct?', options: ['COUD', 'COULD', 'KOULD', 'COLUD'], answer: 'COULD' },
+];
+
+// ── Phase 6: Memory sequence ──
 const SEQUENCE_ROUNDS = [
   { seq: ['A', 'B', 'C'], options: ['A', 'B', 'C', 'D', 'E', 'F'] },
   { seq: ['D', 'A', 'C'], options: ['A', 'B', 'C', 'D', 'E', 'F'] },
   { seq: ['B', 'E', 'D'], options: ['A', 'B', 'C', 'D', 'E', 'F'] },
 ];
-
-const RAPID_GRID = ['A','T','A','K','A','M','A','R','A','S','A','P','A','W','A','X'];
 
 export default function AssessmentScreen() {
   const colors = useColors();
@@ -37,10 +111,14 @@ export default function AssessmentScreen() {
   const topPad = Platform.OS === 'web' ? 67 : insets.top;
   const botPad = Platform.OS === 'web' ? 34 : insets.bottom;
 
+  const phaseOrder: Phase[] = ['visual', 'color', 'phonological', 'rapid', 'surface', 'sequence'];
+  const totalPhases = phaseOrder.length;
+
   const [phase, setPhase] = useState<Phase>('intro');
   const [questionIdx, setQuestionIdx] = useState(0);
   const [results, setResults] = useState<Record<string, { correct: number; total: number }>>({
     visual: { correct: 0, total: 0 },
+    color: { correct: 0, total: 0 },
     phonological: { correct: 0, total: 0 },
     rapid: { correct: 0, total: 0 },
     surface: { correct: 0, total: 0 },
@@ -60,30 +138,36 @@ export default function AssessmentScreen() {
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
+  // FIXED: useNativeDriver: false so callback fires on web
   const fadeTransition = useCallback((fn: () => void) => {
-    Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+    Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start(() => {
       fn();
-      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: false }).start();
     });
   }, [fadeAnim]);
 
-  const totalPhases = 5;
-  const phaseOrder: Phase[] = ['visual', 'phonological', 'rapid', 'surface', 'sequence'];
   const currentPhaseIdx = phaseOrder.indexOf(phase);
-  const overallProgress = currentPhaseIdx >= 0 ? (currentPhaseIdx / totalPhases) * 100 : 0;
+  const overallProgress = currentPhaseIdx >= 0 ? ((currentPhaseIdx) / totalPhases) * 100 : 0;
 
   // Rapid naming timer
   useEffect(() => {
     if (phase !== 'rapid' || rapidDone) return;
-    if (rapidTime <= 0) {
-      setRapidDone(true);
-      return;
-    }
+    if (rapidTime <= 0) { setRapidDone(true); return; }
     const t = setTimeout(() => setRapidTime((p) => p - 1), 1000);
     return () => clearTimeout(t);
   }, [phase, rapidTime, rapidDone]);
 
+  const getQuestionsForPhase = (phaseKey: string) => {
+    switch (phaseKey) {
+      case 'visual': return LETTER_QUESTIONS;
+      case 'phonological': return RHYME_QUESTIONS;
+      case 'surface': return SPELLING_QUESTIONS;
+      default: return [];
+    }
+  };
+
   const handleAnswer = (answer: string, correctAnswer: string, phaseKey: string) => {
+    if (selectedAnswer) return;
     const correct = answer === correctAnswer;
     setSelectedAnswer(answer);
     setIsCorrect(correct);
@@ -100,25 +184,22 @@ export default function AssessmentScreen() {
     setTimeout(() => {
       setSelectedAnswer(null);
       setIsCorrect(null);
-      const questions =
-        phaseKey === 'visual' ? VISUAL_QUESTIONS :
-        phaseKey === 'phonological' ? RHYME_QUESTIONS.slice(0, 5) :
-        SPELLING_QUESTIONS.slice(0, 5);
-
+      const questions = phaseKey === 'color' ? COLOR_QUESTIONS : getQuestionsForPhase(phaseKey);
       if (questionIdx + 1 >= questions.length) {
         fadeTransition(() => advancePhase(phaseKey));
       } else {
         setQuestionIdx((p) => p + 1);
       }
-    }, 600);
+    }, 700);
   };
 
   const advancePhase = (currentKey: string) => {
     setQuestionIdx(0);
     const idx = phaseOrder.indexOf(currentKey as Phase);
     if (idx + 1 < phaseOrder.length) {
-      setPhase(phaseOrder[idx + 1]);
-      if (phaseOrder[idx + 1] === 'sequence') initSequence();
+      const next = phaseOrder[idx + 1];
+      setPhase(next);
+      if (next === 'sequence') initSequence();
     } else {
       calculateResult();
     }
@@ -171,14 +252,6 @@ export default function AssessmentScreen() {
     if (rapidDone || rapidTapped.includes(idx)) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRapidTapped((p) => [...p, idx]);
-    const correct = RAPID_GRID[idx] === 'A';
-    setResults((prev) => ({
-      ...prev,
-      rapid: {
-        correct: prev.rapid.correct + (correct ? 1 : 0),
-        total: prev.rapid.total + 1,
-      },
-    }));
   };
 
   const finishRapid = () => {
@@ -200,8 +273,19 @@ export default function AssessmentScreen() {
       scores[k] = v.total > 0 ? v.correct / v.total : 1;
     });
 
-    const minScore = Math.min(...Object.values(scores));
-    const worstType = Object.entries(scores).find(([, v]) => v === minScore)?.[0] ?? 'mixed';
+    // Merge color into visual score
+    const visualAvg = (scores.visual + scores.color) / 2;
+    const phaseScores = {
+      visual: visualAvg,
+      phonological: scores.phonological,
+      rapid: scores.rapid,
+      surface: scores.surface,
+      sequence: scores.sequence,
+    };
+
+    const minScore = Math.min(...Object.values(phaseScores));
+    const worstEntry = Object.entries(phaseScores).find(([, v]) => v === minScore);
+    const worstType = worstEntry?.[0] ?? 'mixed';
 
     const typeMap: Record<string, DyslexiaType> = {
       visual: 'visual',
@@ -211,22 +295,18 @@ export default function AssessmentScreen() {
       sequence: 'phonological',
     };
 
-    const avgScore = Object.values(scores).reduce((a, b) => a + b, 0) / Object.values(scores).length;
+    const avgScore = Object.values(phaseScores).reduce((a, b) => a + b, 0) / Object.values(phaseScores).length;
     const level: DyslexiaLevel = avgScore >= 0.7 ? 1 : avgScore >= 0.4 ? 2 : 3;
+    const finalType = typeMap[worstType] ?? 'mixed';
 
-    const typeKey = scores.visual <= scores.phonological && scores.visual <= scores.rapid
-      ? 'visual'
-      : worstType;
-
-    const finalType = typeMap[typeKey] ?? 'mixed';
     setDyslexiaResult({ type: finalType, level });
     setPhase('result');
   };
 
   const handleFinish = async () => {
     if (!dyslexiaResult) return;
-    const assessmentResults: AssessmentResult[] = Object.entries(results).map(([phase, v]) => ({
-      phase,
+    const assessmentResults: AssessmentResult[] = Object.entries(results).map(([p, v]) => ({
+      phase: p,
       score: v.correct,
       totalQuestions: v.total,
       accuracy: v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0,
@@ -235,23 +315,7 @@ export default function AssessmentScreen() {
     router.replace('/(tabs)/');
   };
 
-  const renderPhaseContent = () => {
-    switch (phase) {
-      case 'intro': return renderIntro();
-      case 'visual': return renderMCQ('visual', VISUAL_QUESTIONS, questionIdx, (a) =>
-        handleAnswer(a, VISUAL_QUESTIONS[questionIdx].answer, 'visual'));
-      case 'phonological': return renderMCQ('phonological', RHYME_QUESTIONS.slice(0, 5).map(q => ({
-        prompt: `Which word rhymes with "${q.word}"?`, options: q.options, answer: q.answer
-      })), questionIdx, (a) => handleAnswer(a, RHYME_QUESTIONS[questionIdx].answer, 'phonological'));
-      case 'rapid': return renderRapid();
-      case 'surface': return renderMCQ('surface', SPELLING_QUESTIONS.slice(0, 5).map(q => ({
-        prompt: 'Which spelling is correct?', options: q.options, answer: q.correct
-      })), questionIdx, (a) => handleAnswer(a, SPELLING_QUESTIONS[questionIdx].correct, 'surface'));
-      case 'sequence': return renderSequence();
-      case 'result': return renderResult();
-      default: return null;
-    }
-  };
+  // ── Renderers ──
 
   const renderIntro = () => (
     <View style={styles.center}>
@@ -260,11 +324,26 @@ export default function AssessmentScreen() {
       </View>
       <Text style={[styles.h1, { color: colors.foreground }]}>Quick Assessment</Text>
       <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-        5 short activities to understand how you learn best. No right or wrong — just do your best!
+        6 short activities to understand how you learn best. No right or wrong — just do your best!
       </Text>
-      <Text style={[styles.detail, { color: colors.mutedForeground }]}>
-        Takes about 5 minutes
-      </Text>
+      <View style={styles.phasesList}>
+        {[
+          { icon: 'eye', label: 'Letter Recognition', color: '#6366F1' },
+          { icon: 'droplet', label: 'Color & Pattern', color: '#EC4899' },
+          { icon: 'volume-2', label: 'Rhyming Words', color: '#10B981' },
+          { icon: 'zap', label: 'Rapid Finding', color: '#F59E0B' },
+          { icon: 'type', label: 'Spelling Check', color: '#EF4444' },
+          { icon: 'list', label: 'Memory Sequence', color: '#8B5CF6' },
+        ].map((item, i) => (
+          <View key={i} style={[styles.phaseItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.phaseIcon, { backgroundColor: `${item.color}20` }]}>
+              <Feather name={item.icon as any} size={16} color={item.color} />
+            </View>
+            <Text style={[styles.phaseItemText, { color: colors.foreground }]}>{item.label}</Text>
+          </View>
+        ))}
+      </View>
+      <Text style={[styles.detail, { color: colors.mutedForeground }]}>Takes about 5–7 minutes</Text>
       <Pressable
         onPress={() => fadeTransition(() => setPhase('visual'))}
         style={({ pressed }) => [styles.btn, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
@@ -275,44 +354,151 @@ export default function AssessmentScreen() {
     </View>
   );
 
-  const renderMCQ = (
-    key: string,
-    questions: { prompt: string; options: string[]; answer: string }[],
-    idx: number,
-    onAnswer: (a: string) => void
-  ) => {
-    const q = questions[idx];
+  const renderLetterMCQ = () => {
+    const q = LETTER_QUESTIONS[questionIdx];
     if (!q) return null;
-    const phaseLabels: Record<string, string> = {
-      visual: 'Letter Recognition',
-      phonological: 'Rhyme Finder',
-      surface: 'Spelling Check',
-    };
     return (
       <View style={styles.questionWrap}>
-        <Text style={[styles.phaseLabel, { color: colors.primary }]}>
-          {phaseLabels[key]} · {idx + 1}/{questions.length}
+        <Text style={[styles.phaseLabel, { color: '#6366F1' }]}>
+          Letter Recognition · {questionIdx + 1}/{LETTER_QUESTIONS.length}
         </Text>
         <Text style={[styles.question, { color: colors.foreground }]}>{q.prompt}</Text>
         <View style={styles.options}>
           {q.options.map((opt) => {
             const chosen = selectedAnswer === opt;
-            const correct = opt === q.answer;
-            let bg = colors.card;
-            let border = colors.border;
-            if (chosen) {
-              bg = isCorrect ? `${colors.success}22` : `${colors.destructive}22`;
-              border = isCorrect ? colors.success : colors.destructive;
-            }
+            const bg = chosen
+              ? isCorrect ? `${colors.success}22` : `${colors.destructive}22`
+              : colors.card;
+            const border = chosen
+              ? isCorrect ? colors.success : colors.destructive
+              : colors.border;
             return (
               <Pressable
                 key={opt}
-                onPress={() => !selectedAnswer && onAnswer(opt)}
-                style={[styles.optionBtn, { backgroundColor: bg, borderColor: border, borderRadius: 14 }]}
+                onPress={() => handleAnswer(opt, q.answer, 'visual')}
+                style={[styles.optionBtn, { backgroundColor: bg, borderColor: border }]}
               >
-                <Text style={[styles.optionText, { color: colors.foreground, fontSize: key === 'visual' ? 32 : 18 }]}>
-                  {opt}
-                </Text>
+                <Text style={[styles.optionText, { color: colors.foreground, fontSize: 34 }]}>{opt}</Text>
+                {chosen && (
+                  <Feather
+                    name={isCorrect ? 'check-circle' : 'x-circle'}
+                    size={20}
+                    color={isCorrect ? colors.success : colors.destructive}
+                  />
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+    );
+  };
+
+  const renderColorMCQ = () => {
+    const q = COLOR_QUESTIONS[questionIdx];
+    if (!q) return null;
+    return (
+      <View style={styles.questionWrap}>
+        <Text style={[styles.phaseLabel, { color: '#EC4899' }]}>
+          Color & Pattern · {questionIdx + 1}/{COLOR_QUESTIONS.length}
+        </Text>
+        <Text style={[styles.question, { color: colors.foreground }]}>{q.prompt}</Text>
+        <View style={styles.colorGrid}>
+          {q.options.map((opt) => {
+            const chosen = selectedAnswer === opt.label;
+            const correct = opt.label === q.answer;
+            const borderColor = chosen
+              ? isCorrect ? colors.success : colors.destructive
+              : colors.border;
+            const borderWidth = chosen ? 3 : 1.5;
+            return (
+              <Pressable
+                key={opt.label}
+                onPress={() => handleAnswer(opt.label, q.answer, 'color')}
+                style={[styles.colorCard, { borderColor, borderWidth }]}
+              >
+                <View style={[styles.colorSwatch, { backgroundColor: opt.color }]} />
+                <Text style={[styles.colorLabel, { color: colors.foreground }]}>{opt.label}</Text>
+                {chosen && (
+                  <Feather
+                    name={isCorrect ? 'check-circle' : 'x-circle'}
+                    size={16}
+                    color={isCorrect ? colors.success : colors.destructive}
+                  />
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+    );
+  };
+
+  const renderRhymeMCQ = () => {
+    const q = RHYME_QUESTIONS[questionIdx];
+    if (!q) return null;
+    return (
+      <View style={styles.questionWrap}>
+        <Text style={[styles.phaseLabel, { color: '#10B981' }]}>
+          Rhyming · {questionIdx + 1}/{RHYME_QUESTIONS.length}
+        </Text>
+        <Text style={[styles.question, { color: colors.foreground }]}>{q.prompt}</Text>
+        <View style={styles.options}>
+          {q.options.map((opt) => {
+            const chosen = selectedAnswer === opt;
+            const bg = chosen
+              ? isCorrect ? `${colors.success}22` : `${colors.destructive}22`
+              : colors.card;
+            const border = chosen
+              ? isCorrect ? colors.success : colors.destructive
+              : colors.border;
+            return (
+              <Pressable
+                key={opt}
+                onPress={() => handleAnswer(opt, q.answer, 'phonological')}
+                style={[styles.optionBtn, { backgroundColor: bg, borderColor: border }]}
+              >
+                <Text style={[styles.optionText, { color: colors.foreground, fontSize: 22 }]}>{opt}</Text>
+                {chosen && (
+                  <Feather
+                    name={isCorrect ? 'check-circle' : 'x-circle'}
+                    size={20}
+                    color={isCorrect ? colors.success : colors.destructive}
+                  />
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+    );
+  };
+
+  const renderSpellingMCQ = () => {
+    const q = SPELLING_QUESTIONS[questionIdx];
+    if (!q) return null;
+    return (
+      <View style={styles.questionWrap}>
+        <Text style={[styles.phaseLabel, { color: '#EF4444' }]}>
+          Spelling · {questionIdx + 1}/{SPELLING_QUESTIONS.length}
+        </Text>
+        <Text style={[styles.question, { color: colors.foreground }]}>{q.prompt}</Text>
+        <View style={styles.options}>
+          {q.options.map((opt) => {
+            const chosen = selectedAnswer === opt;
+            const bg = chosen
+              ? isCorrect ? `${colors.success}22` : `${colors.destructive}22`
+              : colors.card;
+            const border = chosen
+              ? isCorrect ? colors.success : colors.destructive
+              : colors.border;
+            return (
+              <Pressable
+                key={opt}
+                onPress={() => handleAnswer(opt, q.answer, 'surface')}
+                style={[styles.optionBtn, { backgroundColor: bg, borderColor: border }]}
+              >
+                <Text style={[styles.optionText, { color: colors.foreground, fontSize: 18 }]}>{opt}</Text>
                 {chosen && (
                   <Feather
                     name={isCorrect ? 'check-circle' : 'x-circle'}
@@ -330,12 +516,17 @@ export default function AssessmentScreen() {
 
   const renderRapid = () => (
     <View style={styles.questionWrap}>
-      <Text style={[styles.phaseLabel, { color: colors.primary }]}>Rapid Finding</Text>
-      <Text style={[styles.question, { color: colors.foreground }]}>Tap all the letter "A" — as fast as you can!</Text>
-      <View style={[styles.timerRow]}>
-        <Feather name="clock" size={16} color={rapidTime <= 5 ? colors.destructive : colors.primary} />
-        <Text style={[styles.timer, { color: rapidTime <= 5 ? colors.destructive : colors.primary }]}>
+      <Text style={[styles.phaseLabel, { color: '#F59E0B' }]}>Rapid Finding</Text>
+      <Text style={[styles.question, { color: colors.foreground }]}>
+        Tap all the letter "A" as fast as you can!
+      </Text>
+      <View style={styles.timerRow}>
+        <Feather name="clock" size={16} color={rapidTime <= 5 ? colors.destructive : '#F59E0B'} />
+        <Text style={[styles.timer, { color: rapidTime <= 5 ? colors.destructive : '#F59E0B' }]}>
           {rapidTime}s
+        </Text>
+        <Text style={[styles.timerSub, { color: colors.mutedForeground }]}>
+          Found: {rapidTapped.filter((i) => RAPID_GRID[i] === 'A').length}/{RAPID_GRID.filter(l => l === 'A').length}
         </Text>
       </View>
       <View style={styles.grid}>
@@ -350,14 +541,20 @@ export default function AssessmentScreen() {
                 styles.gridCell,
                 {
                   backgroundColor: tapped
-                    ? isTarget ? `${colors.success}30` : `${colors.destructive}20`
+                    ? isTarget ? `${colors.success}40` : `${colors.destructive}20`
                     : colors.card,
-                  borderColor: tapped ? (isTarget ? colors.success : colors.destructive) : colors.border,
-                  borderRadius: 10,
+                  borderColor: tapped
+                    ? isTarget ? colors.success : colors.destructive
+                    : colors.border,
                 },
               ]}
             >
-              <Text style={[styles.gridLetter, { color: colors.foreground }]}>{letter}</Text>
+              <Text style={[
+                styles.gridLetter,
+                { color: tapped && isTarget ? colors.success : colors.foreground, fontFamily: 'Inter_700Bold' }
+              ]}>
+                {letter}
+              </Text>
             </Pressable>
           );
         })}
@@ -365,7 +562,7 @@ export default function AssessmentScreen() {
       {(rapidDone || rapidTime <= 0) && (
         <Pressable
           onPress={finishRapid}
-          style={[styles.btn, { backgroundColor: colors.primary }]}
+          style={({ pressed }) => [styles.btn, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
         >
           <Text style={[styles.btnText, { color: colors.primaryForeground }]}>Continue</Text>
         </Pressable>
@@ -377,19 +574,25 @@ export default function AssessmentScreen() {
     const round = SEQUENCE_ROUNDS[seqRound];
     return (
       <View style={styles.questionWrap}>
-        <Text style={[styles.phaseLabel, { color: colors.primary }]}>Memory Sequence · {seqRound + 1}/3</Text>
+        <Text style={[styles.phaseLabel, { color: '#8B5CF6' }]}>
+          Memory Sequence · {seqRound + 1}/{SEQUENCE_ROUNDS.length}
+        </Text>
         <Text style={[styles.question, { color: colors.foreground }]}>
-          {seqPhase === 'show' && showSeq ? 'Remember this sequence:' : 'Tap the letters in order:'}
+          {seqPhase === 'show' && showSeq
+            ? 'Remember this sequence:'
+            : seqPhase === 'show' && !showSeq
+              ? 'Get ready...'
+              : 'Tap the letters in order:'}
         </Text>
         {seqPhase === 'show' && showSeq ? (
           <View style={styles.seqDisplay}>
             {round.seq.map((l, i) => (
-              <View key={i} style={[styles.seqBadge, { backgroundColor: colors.primary }]}>
-                <Text style={[styles.seqLetter, { color: colors.primaryForeground }]}>{l}</Text>
+              <View key={i} style={[styles.seqBadge, { backgroundColor: '#8B5CF6' }]}>
+                <Text style={[styles.seqLetter, { color: '#fff' }]}>{l}</Text>
               </View>
             ))}
           </View>
-        ) : (
+        ) : seqPhase === 'input' ? (
           <>
             <View style={styles.seqInput}>
               {Array.from({ length: round.seq.length }).map((_, i) => (
@@ -407,7 +610,11 @@ export default function AssessmentScreen() {
                   onPress={() => handleSeqTap(l)}
                   style={({ pressed }) => [
                     styles.seqBtn,
-                    { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }
+                    {
+                      backgroundColor: userSeq.includes(l) ? `${colors.primary}22` : colors.card,
+                      borderColor: userSeq.includes(l) ? colors.primary : colors.border,
+                      opacity: pressed ? 0.7 : 1,
+                    }
                   ]}
                 >
                   <Text style={[styles.seqLetter, { color: colors.foreground }]}>{l}</Text>
@@ -415,6 +622,10 @@ export default function AssessmentScreen() {
               ))}
             </View>
           </>
+        ) : (
+          <View style={styles.seqDisplay}>
+            <Text style={[styles.sub, { color: colors.mutedForeground }]}>Preparing next round...</Text>
+          </View>
         )}
       </View>
     );
@@ -423,14 +634,23 @@ export default function AssessmentScreen() {
   const renderResult = () => {
     if (!dyslexiaResult) return null;
     const typeLabels: Record<string, string> = {
-      phonological: 'Phonological',
-      visual: 'Visual',
-      'rapid-naming': 'Rapid Naming',
-      surface: 'Surface',
-      mixed: 'Mixed',
+      phonological: 'Phonological Dyslexia',
+      visual: 'Visual Dyslexia',
+      'rapid-naming': 'Rapid Naming Dyslexia',
+      surface: 'Surface Dyslexia',
+      mixed: 'Mixed Type',
     };
-    const levelLabels = { 1: 'Mild', 2: 'Moderate', 3: 'Significant' };
-    const levelColors = { 1: colors.success, 2: colors.warning, 3: colors.destructive };
+    const typeDescs: Record<string, string> = {
+      phonological: 'Difficulty connecting letters to sounds and rhyming.',
+      visual: 'Difficulty with letter shapes, orientation, and colors.',
+      'rapid-naming': 'Slower processing of symbols, colors, and text.',
+      surface: 'Difficulty with irregular word spelling and recognition.',
+      mixed: 'A combination of multiple reading challenges.',
+    };
+    const levelLabels: Record<number, string> = { 1: 'Mild', 2: 'Moderate', 3: 'Significant' };
+    const levelColors: Record<number, string> = {
+      1: colors.success, 2: colors.warning, 3: colors.destructive,
+    };
 
     return (
       <View style={styles.center}>
@@ -442,18 +662,21 @@ export default function AssessmentScreen() {
           Here's what we found about your learning style:
         </Text>
         <View style={[styles.resultCard, { backgroundColor: colors.card, borderRadius: 20 }]}>
-          <Text style={[styles.resultLabel, { color: colors.mutedForeground }]}>Dyslexia Type</Text>
+          <Text style={[styles.resultLabel, { color: colors.mutedForeground }]}>Primary Type</Text>
           <Text style={[styles.resultValue, { color: colors.primary }]}>
-            {typeLabels[dyslexiaResult.type ?? 'mixed']}
+            {typeLabels[dyslexiaResult.type] ?? 'Mixed Type'}
+          </Text>
+          <Text style={[styles.resultDesc, { color: colors.mutedForeground }]}>
+            {typeDescs[dyslexiaResult.type] ?? ''}
           </Text>
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <Text style={[styles.resultLabel, { color: colors.mutedForeground }]}>Severity</Text>
+          <Text style={[styles.resultLabel, { color: colors.mutedForeground }]}>Severity Level</Text>
           <Text style={[styles.resultValue, { color: levelColors[dyslexiaResult.level] }]}>
             {levelLabels[dyslexiaResult.level]}
           </Text>
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <Text style={[styles.resultNote, { color: colors.mutedForeground }]}>
-            We've personalized your daily games to target your specific needs. Play 6-7 games daily for best results!
+            Your daily games are now personalized to your profile. Play 6–7 games daily for the best results!
           </Text>
         </View>
         <Pressable
@@ -467,14 +690,36 @@ export default function AssessmentScreen() {
     );
   };
 
+  const renderPhaseContent = () => {
+    switch (phase) {
+      case 'intro': return renderIntro();
+      case 'visual': return renderLetterMCQ();
+      case 'color': return renderColorMCQ();
+      case 'phonological': return renderRhymeMCQ();
+      case 'rapid': return renderRapid();
+      case 'surface': return renderSpellingMCQ();
+      case 'sequence': return renderSequence();
+      case 'result': return renderResult();
+      default: return null;
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: topPad }]}>
       {phase !== 'intro' && phase !== 'result' && (
-        <View style={[styles.progressTrack, { backgroundColor: colors.muted }]}>
-          <View style={[styles.progressFill, { width: `${overallProgress}%` as any, backgroundColor: colors.primary }]} />
+        <View style={styles.progressOuter}>
+          <View style={[styles.progressTrack, { backgroundColor: colors.muted }]}>
+            <View style={[styles.progressFill, { width: `${overallProgress}%` as any, backgroundColor: colors.primary }]} />
+          </View>
+          <Text style={[styles.progressLabel, { color: colors.mutedForeground }]}>
+            {currentPhaseIdx + 1}/{totalPhases}
+          </Text>
         </View>
       )}
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: botPad + 20 }]} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: botPad + 20 }]}
+        showsVerticalScrollIndicator={false}
+      >
         <Animated.View style={{ opacity: fadeAnim }}>
           {renderPhaseContent()}
         </Animated.View>
@@ -485,58 +730,80 @@ export default function AssessmentScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  progressTrack: { height: 4, marginHorizontal: 24, borderRadius: 4, marginBottom: 8 },
-  progressFill: { height: 4, borderRadius: 4 },
+  progressOuter: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 24, marginBottom: 8,
+  },
+  progressTrack: { flex: 1, height: 6, borderRadius: 4 },
+  progressFill: { height: 6, borderRadius: 4 },
+  progressLabel: { fontSize: 12, fontFamily: 'Inter_600SemiBold', minWidth: 30 },
   scroll: { padding: 24, flexGrow: 1, justifyContent: 'center' },
-  center: { alignItems: 'center', gap: 20, paddingVertical: 20 },
+  center: { alignItems: 'center', gap: 18, paddingVertical: 20 },
   iconBig: { width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center' },
-  h1: { fontSize: 28, fontFamily: 'Inter_700Bold', textAlign: 'center' },
-  sub: { fontSize: 16, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 24 },
-  detail: { fontSize: 14, fontFamily: 'Inter_400Regular' },
+  h1: { fontSize: 26, fontFamily: 'Inter_700Bold', textAlign: 'center' },
+  sub: { fontSize: 15, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 23 },
+  detail: { fontSize: 13, fontFamily: 'Inter_400Regular' },
+  phasesList: { width: '100%', gap: 8 },
+  phaseItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1,
+  },
+  phaseIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  phaseItemText: { fontSize: 14, fontFamily: 'Inter_500Medium' },
   btn: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingVertical: 16, paddingHorizontal: 32, borderRadius: 16, width: '100%', justifyContent: 'center',
   },
   btnText: { fontSize: 17, fontFamily: 'Inter_700Bold' },
-  questionWrap: { gap: 20 },
-  phaseLabel: { fontSize: 14, fontFamily: 'Inter_600SemiBold', textTransform: 'uppercase', letterSpacing: 1 },
-  question: { fontSize: 22, fontFamily: 'Inter_700Bold', lineHeight: 30 },
-  options: { gap: 12 },
+  questionWrap: { gap: 18 },
+  phaseLabel: { fontSize: 13, fontFamily: 'Inter_600SemiBold', textTransform: 'uppercase', letterSpacing: 1 },
+  question: { fontSize: 20, fontFamily: 'Inter_700Bold', lineHeight: 28 },
+  options: { gap: 10 },
   optionBtn: {
-    padding: 18, borderWidth: 2, flexDirection: 'row',
+    padding: 16, borderWidth: 2, borderRadius: 14, flexDirection: 'row',
     alignItems: 'center', justifyContent: 'space-between',
   },
   optionText: { fontFamily: 'Inter_600SemiBold' },
-  timerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  timer: { fontSize: 20, fontFamily: 'Inter_700Bold' },
+  // Color grid
+  colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' },
+  colorCard: {
+    width: '44%', borderRadius: 16, padding: 12, alignItems: 'center', gap: 8,
+    backgroundColor: '#fff',
+  },
+  colorSwatch: { width: '100%', height: 70, borderRadius: 10 },
+  colorLabel: { fontSize: 18, fontFamily: 'Inter_700Bold' },
+  // Rapid
+  timerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  timer: { fontSize: 22, fontFamily: 'Inter_700Bold' },
+  timerSub: { fontSize: 13, fontFamily: 'Inter_400Regular', marginLeft: 'auto' as any },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   gridCell: {
-    width: 60, height: 60, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5,
+    width: 58, height: 58, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderRadius: 12,
   },
-  gridLetter: { fontSize: 22, fontFamily: 'Inter_700Bold' },
-  seqDisplay: { flexDirection: 'row', gap: 16, justifyContent: 'center', paddingVertical: 20 },
-  seqBadge: {
-    width: 56, height: 56, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  gridLetter: { fontSize: 22 },
+  // Sequence
+  seqDisplay: { flexDirection: 'row', gap: 14, justifyContent: 'center', paddingVertical: 16 },
+  seqBadge: { width: 56, height: 56, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   seqLetter: { fontSize: 24, fontFamily: 'Inter_700Bold' },
   seqInput: { flexDirection: 'row', gap: 12, justifyContent: 'center' },
   seqSlot: {
     width: 56, height: 56, borderRadius: 12, borderWidth: 2,
     alignItems: 'center', justifyContent: 'center',
   },
-  seqOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginTop: 12 },
+  seqOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginTop: 8 },
   seqBtn: {
-    width: 56, height: 56, borderRadius: 12, borderWidth: 1.5,
+    width: 52, height: 52, borderRadius: 12, borderWidth: 1.5,
     alignItems: 'center', justifyContent: 'center',
   },
+  // Result
   resultCard: {
-    padding: 24, width: '100%', gap: 12,
+    padding: 24, width: '100%', gap: 10,
     shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 4,
   },
-  resultLabel: { fontSize: 13, fontFamily: 'Inter_500Medium' },
-  resultValue: { fontSize: 22, fontFamily: 'Inter_700Bold' },
-  divider: { height: 1 },
-  resultNote: { fontSize: 14, fontFamily: 'Inter_400Regular', lineHeight: 22 },
+  resultLabel: { fontSize: 12, fontFamily: 'Inter_500Medium', textTransform: 'uppercase', letterSpacing: 0.5 },
+  resultValue: { fontSize: 20, fontFamily: 'Inter_700Bold' },
+  resultDesc: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 20, marginTop: -4 },
+  divider: { height: 1, marginVertical: 4 },
+  resultNote: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 20 },
 });

@@ -27,6 +27,69 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+// Simple scale-based flip: card shrinks to 0 then grows back showing the other face
+function FlipCard({
+  card,
+  onPress,
+  cardWidth,
+  colors,
+}: {
+  card: Card;
+  onPress: () => void;
+  cardWidth: string;
+  colors: ReturnType<typeof import('@/hooks/useColors').useColors>;
+}) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [showFront, setShowFront] = useState(card.isFlipped || card.isMatched);
+
+  useEffect(() => {
+    const targetFlipped = card.isFlipped || card.isMatched;
+    if (targetFlipped === showFront) return;
+
+    // Shrink, swap face, grow back
+    Animated.timing(scaleAnim, {
+      toValue: 0, duration: 120, useNativeDriver: false,
+    }).start(() => {
+      setShowFront(targetFlipped);
+      Animated.timing(scaleAnim, {
+        toValue: 1, duration: 150, useNativeDriver: false,
+      }).start();
+    });
+  }, [card.isFlipped, card.isMatched]);
+
+  const bgColor = card.isMatched
+    ? `${colors.success}22`
+    : showFront
+      ? colors.card
+      : colors.primary;
+
+  const borderColor = card.isMatched
+    ? colors.success
+    : showFront
+      ? colors.border
+      : colors.primary;
+
+  return (
+    <Animated.View style={[styles.cardWrapper, { width: cardWidth as any, transform: [{ scaleX: scaleAnim }] }]}>
+      <Pressable
+        onPress={onPress}
+        style={[
+          styles.card,
+          { backgroundColor: bgColor, borderColor, borderWidth: 2 },
+        ]}
+      >
+        {showFront ? (
+          <Text style={[styles.cardText, { color: card.isMatched ? colors.success : colors.foreground }]}>
+            {card.value}
+          </Text>
+        ) : (
+          <Feather name="help-circle" size={28} color={colors.primaryForeground} />
+        )}
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 export default function CardMatchScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -46,8 +109,6 @@ export default function CardMatchScreen() {
   const [gameOver, setGameOver] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
 
-  const flipAnims = useRef<Record<string, Animated.Value>>({});
-
   const initGame = useCallback(() => {
     const selected = pairsData.slice(0, pairCount);
     const allCards: Card[] = [];
@@ -55,11 +116,7 @@ export default function CardMatchScreen() {
       allCards.push({ id: `w-${i}`, value: pair.word, pairId: i, isFlipped: false, isMatched: false });
       allCards.push({ id: `m-${i}`, value: pair.match, pairId: i, isFlipped: false, isMatched: false });
     });
-    const shuffled = shuffle(allCards);
-    shuffled.forEach((c) => {
-      flipAnims.current[c.id] = new Animated.Value(0);
-    });
-    setCards(shuffled);
+    setCards(shuffle(allCards));
     setFlippedIds([]);
     setMatchedPairs(0);
     setMoves(0);
@@ -69,23 +126,10 @@ export default function CardMatchScreen() {
 
   useEffect(() => { initGame(); }, []);
 
-  const flipCard = (id: string) => {
-    Animated.spring(flipAnims.current[id], {
-      toValue: 1, useNativeDriver: false, tension: 60, friction: 8,
-    }).start();
-  };
-
-  const unflipCard = (id: string) => {
-    Animated.spring(flipAnims.current[id], {
-      toValue: 0, useNativeDriver: false, tension: 60, friction: 8,
-    }).start();
-  };
-
   const handleCardPress = (card: Card) => {
     if (isChecking || card.isFlipped || card.isMatched || flippedIds.length >= 2) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    flipCard(card.id);
 
     const newFlipped = [...flippedIds, card.id];
     setFlippedIds(newFlipped);
@@ -96,23 +140,21 @@ export default function CardMatchScreen() {
       setMoves((m) => m + 1);
       const [id1, id2] = newFlipped;
       const c1 = cards.find((c) => c.id === id1)!;
-      const c2 = { ...card, id: card.id };
+      const c2 = card;
 
       setTimeout(() => {
         if (c1.pairId === c2.pairId) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           setCards((prev) => prev.map((c) =>
-            c.id === id1 || c.id === id2 ? { ...c, isMatched: true } : c
+            c.id === id1 || c.id === id2 ? { ...c, isMatched: true, isFlipped: true } : c
           ));
           const newMatched = matchedPairs + 1;
           setMatchedPairs(newMatched);
           if (newMatched >= pairCount) {
-            setGameOver(true);
+            setTimeout(() => setGameOver(true), 400);
           }
         } else {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-          unflipCard(id1);
-          unflipCard(id2);
           setCards((prev) => prev.map((c) =>
             c.id === id1 || c.id === id2 ? { ...c, isFlipped: false } : c
           ));
@@ -134,7 +176,7 @@ export default function CardMatchScreen() {
   };
 
   const cols = level === 1 ? 2 : 3;
-  const cardWidth = `${Math.floor(92 / cols)}%`;
+  const cardWidth = `${Math.floor(90 / cols)}%`;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: topPad }]}>
@@ -159,47 +201,24 @@ export default function CardMatchScreen() {
         ))}
       </View>
 
+      <View style={[styles.hint, { backgroundColor: colors.muted }]}>
+        <Feather name="info" size={13} color={colors.mutedForeground} />
+        <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
+          Tap two cards to find matching pairs
+        </Text>
+      </View>
+
       <ScrollView contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>
         <View style={styles.gridInner}>
-          {cards.map((card) => {
-            const anim = flipAnims.current[card.id];
-            if (!anim) return null;
-
-            const frontInterpolate = anim.interpolate({
-              inputRange: [0, 0.5, 1], outputRange: ['180deg', '90deg', '0deg'],
-            });
-            const backInterpolate = anim.interpolate({
-              inputRange: [0, 0.5, 1], outputRange: ['0deg', '90deg', '180deg'],
-            });
-
-            return (
-              <Pressable
-                key={card.id}
-                onPress={() => handleCardPress(card)}
-                style={[styles.card, { width: cardWidth as any }]}
-              >
-                <Animated.View
-                  style={[styles.cardFace, styles.cardBack, {
-                    backgroundColor: card.isMatched ? `${colors.success}22` : colors.card,
-                    borderColor: card.isMatched ? colors.success : colors.border,
-                    transform: [{ rotateY: frontInterpolate }],
-                  }]}
-                >
-                  <Text style={[styles.cardText, { color: card.isMatched ? colors.success : colors.foreground }]}>
-                    {card.value}
-                  </Text>
-                </Animated.View>
-                <Animated.View
-                  style={[styles.cardFace, styles.cardFront, {
-                    backgroundColor: colors.primary,
-                    transform: [{ rotateY: backInterpolate }],
-                  }]}
-                >
-                  <Feather name="help-circle" size={28} color={colors.primaryForeground} />
-                </Animated.View>
-              </Pressable>
-            );
-          })}
+          {cards.map((card) => (
+            <FlipCard
+              key={card.id}
+              card={card}
+              onPress={() => handleCardPress(card)}
+              cardWidth={cardWidth}
+              colors={colors}
+            />
+          ))}
         </View>
       </ScrollView>
 
@@ -239,18 +258,20 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   pairDot: { width: 12, height: 12, borderRadius: 6 },
+  hint: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginHorizontal: 20, marginBottom: 8, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8,
+  },
+  hintText: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   grid: { padding: 16, flexGrow: 1 },
   gridInner: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' },
-  card: { aspectRatio: 1, perspective: '1000px' as any },
-  cardFace: {
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    borderRadius: 14, borderWidth: 1.5,
+  cardWrapper: { aspectRatio: 1 },
+  card: {
+    flex: 1, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center',
-    backfaceVisibility: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
   },
-  cardFront: {},
-  cardBack: {},
-  cardText: { fontSize: 16, fontFamily: 'Inter_700Bold', textAlign: 'center', padding: 4 },
+  cardText: { fontSize: 15, fontFamily: 'Inter_700Bold', textAlign: 'center', padding: 6 },
   overlay: {
     ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center',
   },

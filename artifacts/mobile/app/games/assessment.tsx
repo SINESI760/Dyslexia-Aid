@@ -17,9 +17,9 @@ type Phase = 'intro' | 'visual' | 'color' | 'phonological' | 'rapid' | 'surface'
 const LETTER_QUESTIONS = [
   { prompt: 'Which letter is "b"?', options: ['d', 'b', 'p', 'q'], answer: 'b' },
   { prompt: 'Which letter is "d"?', options: ['b', 'q', 'd', 'p'], answer: 'd' },
-  { prompt: 'Which letter is "p"?', options: ['q', 'b', 'd', 'p'], answer: 'p' },
-  { prompt: 'Which letter is "n"?', options: ['u', 'm', 'n', 'h'], answer: 'n' },
-  { prompt: 'Which is different from "was"?', options: ['was', 'saw', 'was', 'was'], answer: 'saw' },
+  { prompt: 'Which letter is "p"?', options: ['q', 'b', 'p', 'd'], answer: 'p' },
+  { prompt: 'Which letter is "n"?', options: ['u', 'n', 'm', 'h'], answer: 'n' },
+  { prompt: 'Which word is spelled "saw" (not "was")?', options: ['wsa', 'saw', 'aws', 'was'], answer: 'saw' },
 ];
 
 // ── Phase 2: Color & shape discrimination (visual processing) ──
@@ -78,11 +78,11 @@ const COLOR_QUESTIONS: { prompt: string; options: { label: string; color: string
 
 // ── Phase 3: Rhyming (phonological) ──
 const RHYME_QUESTIONS = [
-  { prompt: 'Which word rhymes with "CAT"?', options: ['BAT', 'DOG', 'SUN', 'BIG'], answer: 'BAT' },
-  { prompt: 'Which word rhymes with "SUN"?', options: ['CAT', 'RUN', 'BIG', 'HAT'], answer: 'RUN' },
-  { prompt: 'Which word rhymes with "HAT"?', options: ['DOG', 'SUN', 'MAT', 'BIG'], answer: 'MAT' },
-  { prompt: 'Which word rhymes with "HOP"?', options: ['CAT', 'SUN', 'TOP', 'BIG'], answer: 'TOP' },
-  { prompt: 'Which word rhymes with "PIG"?', options: ['CAT', 'SUN', 'HAT', 'JIG'], answer: 'JIG' },
+  { prompt: 'Which word rhymes with "CAT"?', options: ['BAT', 'DOG', 'RUN', 'PILL'], answer: 'BAT' },
+  { prompt: 'Which word rhymes with "SUN"?', options: ['FUN', 'MAP', 'LOG', 'BELL'], answer: 'FUN' },
+  { prompt: 'Which word rhymes with "CAKE"?', options: ['ROPE', 'LAKE', 'FISH', 'DRUM'], answer: 'LAKE' },
+  { prompt: 'Which word rhymes with "HOP"?', options: ['BALL', 'SAND', 'TOP', 'WIRE'], answer: 'TOP' },
+  { prompt: 'Which word rhymes with "PIG"?', options: ['MOON', 'JIG', 'FROG', 'STAR'], answer: 'JIG' },
 ];
 
 // ── Phase 4: Rapid naming grid (letters + colors) ──
@@ -364,8 +364,8 @@ export default function AssessmentScreen() {
         </Text>
         <Text style={[styles.question, { color: colors.foreground }]}>{q.prompt}</Text>
         <View style={styles.options}>
-          {q.options.map((opt) => {
-            const chosen = selectedAnswer === opt;
+          {q.options.map((opt, i) => {
+            const chosen = selectedAnswer === `${i}:${opt}`;
             const bg = chosen
               ? isCorrect ? `${colors.success}22` : `${colors.destructive}22`
               : colors.card;
@@ -374,8 +374,8 @@ export default function AssessmentScreen() {
               : colors.border;
             return (
               <Pressable
-                key={opt}
-                onPress={() => handleAnswer(opt, q.answer, 'visual')}
+                key={`v-${i}`}
+                onPress={() => handleAnswer(`${i}:${opt}`, `${q.options.indexOf(q.answer)}:${q.answer}`, 'visual')}
                 style={[styles.optionBtn, { backgroundColor: bg, borderColor: border }]}
               >
                 <Text style={[styles.optionText, { color: colors.foreground, fontSize: 34 }]}>{opt}</Text>
@@ -444,8 +444,8 @@ export default function AssessmentScreen() {
         </Text>
         <Text style={[styles.question, { color: colors.foreground }]}>{q.prompt}</Text>
         <View style={styles.options}>
-          {q.options.map((opt) => {
-            const chosen = selectedAnswer === opt;
+          {q.options.map((opt, i) => {
+            const chosen = selectedAnswer === `${i}:${opt}`;
             const bg = chosen
               ? isCorrect ? `${colors.success}22` : `${colors.destructive}22`
               : colors.card;
@@ -454,8 +454,8 @@ export default function AssessmentScreen() {
               : colors.border;
             return (
               <Pressable
-                key={opt}
-                onPress={() => handleAnswer(opt, q.answer, 'phonological')}
+                key={`r-${i}`}
+                onPress={() => handleAnswer(`${i}:${opt}`, `${q.options.indexOf(q.answer)}:${q.answer}`, 'phonological')}
                 style={[styles.optionBtn, { backgroundColor: bg, borderColor: border }]}
               >
                 <Text style={[styles.optionText, { color: colors.foreground, fontSize: 22 }]}>{opt}</Text>
@@ -484,8 +484,8 @@ export default function AssessmentScreen() {
         </Text>
         <Text style={[styles.question, { color: colors.foreground }]}>{q.prompt}</Text>
         <View style={styles.options}>
-          {q.options.map((opt) => {
-            const chosen = selectedAnswer === opt;
+          {q.options.map((opt, i) => {
+            const chosen = selectedAnswer === `${i}:${opt}`;
             const bg = chosen
               ? isCorrect ? `${colors.success}22` : `${colors.destructive}22`
               : colors.card;
@@ -494,8 +494,8 @@ export default function AssessmentScreen() {
               : colors.border;
             return (
               <Pressable
-                key={opt}
-                onPress={() => handleAnswer(opt, q.answer, 'surface')}
+                key={`s-${i}`}
+                onPress={() => handleAnswer(`${i}:${opt}`, `${q.options.indexOf(q.answer)}:${q.answer}`, 'surface')}
                 style={[styles.optionBtn, { backgroundColor: bg, borderColor: border }]}
               >
                 <Text style={[styles.optionText, { color: colors.foreground, fontSize: 18 }]}>{opt}</Text>

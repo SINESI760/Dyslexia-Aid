@@ -150,20 +150,22 @@ export const SPELLING_QUESTIONS = [
   { correct: 'NIGHT', options: ['NIGT', 'NIGHT', 'NIIGHT', 'NITE'] },
 ];
 
+const _ALL_LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
+
 export const BALLOON_TARGETS_BY_LEVEL: Record<number, { target: string; distractors: string[] }[]> = {
   1: [
-    { target: 'A', distractors: ['B', 'C', 'D', 'E', 'F'] },
-    { target: 'B', distractors: ['A', 'C', 'D', 'E', 'F'] },
-    { target: 'S', distractors: ['A', 'B', 'C', 'D', 'E'] },
+    { target: 'A', distractors: _ALL_LETTERS.filter(l => l !== 'A') },
+    { target: 'B', distractors: _ALL_LETTERS.filter(l => l !== 'B') },
+    { target: 'S', distractors: _ALL_LETTERS.filter(l => l !== 'S') },
   ],
   2: [
-    { target: 'AT', distractors: ['AN', 'IN', 'ON', 'UP', 'IT'] },
-    { target: 'IN', distractors: ['AT', 'AN', 'ON', 'UP', 'IT'] },
-    { target: 'UP', distractors: ['AT', 'AN', 'IN', 'ON', 'IT'] },
+    { target: 'AT', distractors: ['AN','IN','ON','UP','IT','AM','AS','IF','OR','US','TO','GO','NO','BE','ME','MY','BY','DO','OF','SO'] },
+    { target: 'IN', distractors: ['AT','AN','ON','UP','IT','AM','AS','IF','OR','US','TO','GO','NO','BE','ME','MY','BY','DO','OF','SO'] },
+    { target: 'UP', distractors: ['AT','AN','IN','ON','IT','AM','AS','IF','OR','US','TO','GO','NO','BE','ME','MY','BY','DO','OF','SO'] },
   ],
   3: [
-    { target: 'CAT', distractors: ['DOG', 'SUN', 'HAT', 'BAT', 'BIG'] },
-    { target: 'SUN', distractors: ['CAT', 'DOG', 'HAT', 'RUN', 'BIG'] },
-    { target: 'DOG', distractors: ['CAT', 'SUN', 'HAT', 'LOG', 'BIG'] },
+    { target: 'CAT', distractors: ['DOG','SUN','HAT','BAT','RAT','SAT','MAT','FAT','NAP','MAP','TAP','LAP','CAP','RAP','COP','CUP','CUT','COT','COB','COD'] },
+    { target: 'SUN', distractors: ['CAT','DOG','HAT','RUN','BUN','FUN','GUN','PUN','TUN','DUN','SAN','SON','SIN','SEN','SAP','SUP','SUB','SUM','SUG','SUT'] },
+    { target: 'DOG', distractors: ['CAT','SUN','HAT','LOG','HOG','FOG','BOG','COG','JOG','MOG','DIG','DUG','DAG','DIN','DIM','DIP','DIT','DIB','DOT','DOE'] },
   ],
 };

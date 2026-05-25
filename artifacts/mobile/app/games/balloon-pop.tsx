@@ -104,11 +104,13 @@ export default function BalloonPopScreen() {
   }, [skyHeight, level, targets, endGame]);
 
   useEffect(() => {
-    if (!gameActive || !skyReady) return;
+    // Don't spawn during the "round cleared" banner or when game is over
+    if (!gameActive || !skyReady || roundComplete) return;
     const interval = Math.max(700, 1400 - level * 100);
     spawnTimer.current = setInterval(spawnBalloon, interval);
     return () => { if (spawnTimer.current) clearInterval(spawnTimer.current); };
-  }, [gameActive, skyReady, spawnBalloon]);
+    // roundIdx in deps so a new interval starts each time the round changes
+  }, [gameActive, skyReady, spawnBalloon, roundIdx, roundComplete]);
 
   const popBalloon = (balloon: Balloon) => {
     if (balloon.popped || !gameActiveRef.current) return;

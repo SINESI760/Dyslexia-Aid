@@ -29,7 +29,7 @@ export const GAME_INFO: Record<string, { title: string; description: string; col
   },
   'cake-tower': {
     title: 'Cake Tower',
-    description: 'Stack layers in correct order',
+    description: 'Stack & time letter blocks',
     color: '#EC4899',
     icon: 'layers',
     benefit: 'Develops sequencing & visual tracking',
@@ -40,6 +40,20 @@ export const GAME_INFO: Record<string, { title: string; description: string; col
     color: '#8B5CF6',
     icon: 'list',
     benefit: 'Boosts working memory & attention',
+  },
+  'water-sort': {
+    title: 'Water Sort',
+    description: 'Sort colored liquids into tubes',
+    color: '#06B6D4',
+    icon: 'droplet',
+    benefit: 'Trains visual discrimination & logic',
+  },
+  'fruit-crush': {
+    title: 'Fruit Crush',
+    description: 'Match 3 fruits — daily challenge',
+    color: '#F97316',
+    icon: 'grid',
+    benefit: 'Builds pattern recognition & focus',
   },
 };
 
@@ -78,12 +92,12 @@ export const DYSLEXIA_LEVELS: Record<number, { label: string; description: strin
 };
 
 export const GAME_ROTATIONS: Record<string, string[]> = {
-  phonological: ['word-scramble', 'balloon-pop', 'letter-sort', 'card-match', 'sequence', 'word-scramble', 'balloon-pop'],
-  visual: ['card-match', 'letter-sort', 'cake-tower', 'balloon-pop', 'sequence', 'card-match', 'letter-sort'],
-  'rapid-naming': ['balloon-pop', 'sequence', 'card-match', 'word-scramble', 'letter-sort', 'balloon-pop', 'sequence'],
-  surface: ['word-scramble', 'card-match', 'letter-sort', 'balloon-pop', 'cake-tower', 'word-scramble', 'card-match'],
-  mixed: ['card-match', 'balloon-pop', 'letter-sort', 'word-scramble', 'cake-tower', 'sequence', 'card-match'],
-  default: ['card-match', 'balloon-pop', 'letter-sort', 'word-scramble', 'sequence', 'cake-tower', 'card-match'],
+  phonological:   ['word-scramble', 'balloon-pop', 'letter-sort', 'card-match', 'sequence', 'fruit-crush', 'water-sort'],
+  visual:         ['card-match', 'water-sort', 'cake-tower', 'balloon-pop', 'sequence', 'fruit-crush', 'letter-sort'],
+  'rapid-naming': ['balloon-pop', 'sequence', 'card-match', 'word-scramble', 'letter-sort', 'fruit-crush', 'water-sort'],
+  surface:        ['word-scramble', 'card-match', 'letter-sort', 'balloon-pop', 'cake-tower', 'water-sort', 'fruit-crush'],
+  mixed:          ['card-match', 'balloon-pop', 'letter-sort', 'word-scramble', 'cake-tower', 'sequence', 'fruit-crush'],
+  default:        ['card-match', 'balloon-pop', 'letter-sort', 'word-scramble', 'sequence', 'water-sort', 'fruit-crush'],
 };
 
 export const WORDS_BY_LEVEL: Record<number, string[]> = {

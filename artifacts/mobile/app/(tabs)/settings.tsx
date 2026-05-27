@@ -1,19 +1,18 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, Pressable, Platform, ScrollView, Switch,
+  View, Text, StyleSheet, Platform, ScrollView, Switch,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
-import { router } from 'expo-router';
 
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { theme, setTheme } = useTheme();
-  const { profile, resetProfile } = useUser();
+  const { profile } = useUser();
   const topPad = Platform.OS === 'web' ? 60 : insets.top;
   const botPad = Platform.OS === 'web' ? 84 : insets.bottom + 20;
 
@@ -32,66 +31,13 @@ export default function SettingsScreen() {
         {/* Appearance */}
         <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>APPEARANCE</Text>
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          {/* Light mode */}
-          <Pressable
-            onPress={() => setTheme('light')}
-            style={({ pressed }) => [
-              styles.themeOption,
-              {
-                backgroundColor: !isDark ? `${colors.primary}15` : 'transparent',
-                borderColor: !isDark ? colors.primary : colors.border,
-                opacity: pressed ? 0.8 : 1,
-              },
-            ]}
-          >
-            <View style={[styles.themeIconWrap, { backgroundColor: '#F9F8FF' }]}>
-              <Feather name="sun" size={20} color="#6366F1" />
-            </View>
-            <View style={styles.themeTextWrap}>
-              <Text style={[styles.themeTitle, { color: colors.foreground }]}>Light</Text>
-              <Text style={[styles.themeSub, { color: colors.mutedForeground }]}>Bright background</Text>
-            </View>
-            {!isDark && (
-              <View style={[styles.checkCircle, { backgroundColor: colors.primary }]}>
-                <Feather name="check" size={13} color="#fff" />
-              </View>
-            )}
-          </Pressable>
-
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-          {/* Dark mode */}
-          <Pressable
-            onPress={() => setTheme('dark')}
-            style={({ pressed }) => [
-              styles.themeOption,
-              {
-                backgroundColor: isDark ? `${colors.primary}15` : 'transparent',
-                borderColor: isDark ? colors.primary : colors.border,
-                opacity: pressed ? 0.8 : 1,
-              },
-            ]}
-          >
-            <View style={[styles.themeIconWrap, { backgroundColor: '#0F0D1C' }]}>
-              <Feather name="moon" size={20} color="#818CF8" />
-            </View>
-            <View style={styles.themeTextWrap}>
-              <Text style={[styles.themeTitle, { color: colors.foreground }]}>Dark</Text>
-              <Text style={[styles.themeSub, { color: colors.mutedForeground }]}>Easy on the eyes</Text>
-            </View>
-            {isDark && (
-              <View style={[styles.checkCircle, { backgroundColor: colors.primary }]}>
-                <Feather name="check" size={13} color={colors.primaryForeground} />
-              </View>
-            )}
-          </Pressable>
-        </View>
-
-        {/* Quick toggle */}
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.row}>
-            <Feather name={isDark ? 'moon' : 'sun'} size={18} color={colors.primary} />
-            <Text style={[styles.rowLabel, { color: colors.foreground }]}>Dark Mode</Text>
+            <View style={[styles.iconWrap, { backgroundColor: isDark ? '#1E1B4B' : '#F1F0FF' }]}>
+              <Feather name={isDark ? 'moon' : 'sun'} size={18} color={colors.primary} />
+            </View>
+            <Text style={[styles.rowLabel, { color: colors.foreground }]}>
+              {isDark ? 'Dark Mode' : 'Light Mode'}
+            </Text>
             <Switch
               value={isDark}
               onValueChange={(v) => setTheme(v ? 'dark' : 'light')}
@@ -107,23 +53,33 @@ export default function SettingsScreen() {
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>PROFILE</Text>
             <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={styles.row}>
-                <Feather name="user" size={18} color={colors.primary} />
-                <Text style={[styles.rowLabel, { color: colors.foreground }]}>{profile.name || 'User'}</Text>
+                <View style={[styles.iconWrap, { backgroundColor: `${colors.primary}18` }]}>
+                  <Feather name="user" size={18} color={colors.primary} />
+                </View>
+                <Text style={[styles.rowLabel, { color: colors.foreground }]}>
+                  {profile.name || 'User'}
+                </Text>
                 <Text style={[styles.rowValue, { color: colors.mutedForeground }]}>
                   Level {profile.currentLevel}
                 </Text>
               </View>
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <View style={styles.row}>
-                <Feather name="zap" size={18} color={colors.warning} />
+                <View style={[styles.iconWrap, { backgroundColor: `${colors.warning}18` }]}>
+                  <Feather name="zap" size={18} color={colors.warning} />
+                </View>
                 <Text style={[styles.rowLabel, { color: colors.foreground }]}>Total XP</Text>
                 <Text style={[styles.rowValue, { color: colors.warning }]}>{profile.totalXP} XP</Text>
               </View>
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <View style={styles.row}>
-                <Feather name="activity" size={18} color={colors.success} />
+                <View style={[styles.iconWrap, { backgroundColor: `${colors.success}18` }]}>
+                  <Feather name="activity" size={18} color={colors.success} />
+                </View>
                 <Text style={[styles.rowLabel, { color: colors.foreground }]}>Streak</Text>
-                <Text style={[styles.rowValue, { color: colors.success }]}>{profile.streak} days 🔥</Text>
+                <Text style={[styles.rowValue, { color: colors.success }]}>
+                  {profile.streak} days 🔥
+                </Text>
               </View>
             </View>
           </>
@@ -133,13 +89,17 @@ export default function SettingsScreen() {
         <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>ABOUT</Text>
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.row}>
-            <Feather name="info" size={18} color={colors.primary} />
+            <View style={[styles.iconWrap, { backgroundColor: `${colors.primary}18` }]}>
+              <Feather name="info" size={18} color={colors.primary} />
+            </View>
             <Text style={[styles.rowLabel, { color: colors.foreground }]}>DyslexiaHeal</Text>
             <Text style={[styles.rowValue, { color: colors.mutedForeground }]}>v1.0</Text>
           </View>
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <View style={styles.row}>
-            <Feather name="heart" size={18} color="#EF4444" />
+            <View style={[styles.iconWrap, { backgroundColor: '#EF444418' }]}>
+              <Feather name="heart" size={18} color="#EF4444" />
+            </View>
             <Text style={[styles.rowLabel, { color: colors.foreground }]}>Made for learners</Text>
           </View>
         </View>
@@ -165,26 +125,15 @@ const styles = StyleSheet.create({
     borderRadius: 16, borderWidth: 1, overflow: 'hidden',
     shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
   },
-  themeOption: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    padding: 16, borderWidth: 0,
-  },
-  themeIconWrap: {
-    width: 44, height: 44, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  themeTextWrap: { flex: 1 },
-  themeTitle: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
-  themeSub: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 1 },
-  checkCircle: {
-    width: 26, height: 26, borderRadius: 13,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  divider: { height: 1, marginHorizontal: 16 },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 16, paddingVertical: 14,
   },
+  iconWrap: {
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
   rowLabel: { flex: 1, fontSize: 15, fontFamily: 'Inter_500Medium' },
   rowValue: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  divider: { height: 1, marginHorizontal: 16 },
 });

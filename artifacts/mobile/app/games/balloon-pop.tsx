@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View, Platform } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
@@ -47,7 +47,7 @@ export default function BalloonPopScreen() {
   const [totalPops, setTotalPops] = useState(0);
   const [gameActive, setGameActive] = useState(true);
   const [gameOver, setGameOver] = useState(false);
-  const [startTime] = useState(Date.now());
+  const [startTime, setStartTime] = useState(Date.now());
   const [roundComplete, setRoundComplete] = useState(false);
   const [poppedFlash, setPoppedFlash] = useState<{ id: string; x: number; y: number; correct: boolean } | null>(null);
 
@@ -67,14 +67,38 @@ export default function BalloonPopScreen() {
     setBalloons([]);
   }, []);
 
+  // Reset all game state each time the screen is focused (fixes web navigation stale state)
+  useFocusEffect(
+    useCallback(() => {
+      if (spawnTimer.current) clearInterval(spawnTimer.current);
+      gameActiveRef.current = true;
+      correctPopsRef.current = 0;
+      livesRef.current = 3;
+      roundIdxRef.current = 0;
+      setRoundIdx(0);
+      setBalloons([]);
+      setLives(3);
+      setScore(0);
+      setCorrectPops(0);
+      setTotalPops(0);
+      setGameActive(true);
+      setGameOver(false);
+      setRoundComplete(false);
+      setPoppedFlash(null);
+      setStartTime(Date.now());
+    }, [])
+  );
+
   const spawnBalloon = useCallback(() => {
     if (!gameActiveRef.current || skyHeight < 100) return;
 
     const round = targets[roundIdxRef.current];
     if (!round) return;
 
-    const allValues = [round.target, ...round.distractors];
-    const value = allValues[Math.floor(Math.random() * allValues.length)];
+    // Target appears ~40% of the time so it doesn't feel too rare
+    const value = Math.random() < 0.40
+      ? round.target
+      : round.distractors[Math.floor(Math.random() * round.distractors.length)];
     const xPct = 5 + Math.random() * 72; // 5% to 77% to stay on screen
     const color = BALLOON_COLORS[Math.floor(Math.random() * BALLOON_COLORS.length)];
 
@@ -325,8 +349,8 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-30deg' }],
   },
   balloonText: {
-    color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold',
-    textAlign: 'center', paddingHorizontal: 6,
+    color: '#fff', fontSize: 26, fontFamily: 'Inter_700Bold',
+    textAlign: 'center', paddingHorizontal: 4,
   },
   string: { width: 2, height: STRING_H, alignSelf: 'center' },
   knot: { width: 8, height: 8, borderRadius: 4, alignSelf: 'center' },

@@ -134,7 +134,9 @@ export default function AssessmentScreen() {
   const [userSeq, setUserSeq] = useState<string[]>([]);
   const [seqPhase, setSeqPhase] = useState<'show' | 'input'>('show');
   const [seqRound, setSeqRound] = useState(0);
-  const [dyslexiaResult, setDyslexiaResult] = useState<{ type: DyslexiaType; level: DyslexiaLevel } | null>(null);
+  const [dyslexiaResult, setDyslexiaResult] = useState<{
+    type: DyslexiaType; level: DyslexiaLevel; noDyslexia?: boolean;
+  } | null>(null);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -283,7 +285,16 @@ export default function AssessmentScreen() {
       sequence: scores.sequence,
     };
 
+    const avgScore = Object.values(phaseScores).reduce((a, b) => a + b, 0) / Object.values(phaseScores).length;
     const minScore = Math.min(...Object.values(phaseScores));
+
+    // High scorers (≥ 85% average AND no single category below 60%) → no dyslexia
+    if (avgScore >= 0.85 && minScore >= 0.6) {
+      setDyslexiaResult({ type: 'mixed', level: 1, noDyslexia: true });
+      setPhase('result');
+      return;
+    }
+
     const worstEntry = Object.entries(phaseScores).find(([, v]) => v === minScore);
     const worstType = worstEntry?.[0] ?? 'mixed';
 
@@ -295,7 +306,6 @@ export default function AssessmentScreen() {
       sequence: 'phonological',
     };
 
-    const avgScore = Object.values(phaseScores).reduce((a, b) => a + b, 0) / Object.values(phaseScores).length;
     const level: DyslexiaLevel = avgScore >= 0.7 ? 1 : avgScore >= 0.4 ? 2 : 3;
     const finalType = typeMap[worstType] ?? 'mixed';
 
@@ -633,6 +643,50 @@ export default function AssessmentScreen() {
 
   const renderResult = () => {
     if (!dyslexiaResult) return null;
+
+    // ── No dyslexia detected ──────────────────────────────────────────────
+    if (dyslexiaResult.noDyslexia) {
+      return (
+        <View style={styles.center}>
+          <View style={[styles.iconBig, { backgroundColor: '#10B98120' }]}>
+            <Text style={{ fontSize: 52 }}>🎉</Text>
+          </View>
+          <Text style={[styles.h1, { color: colors.foreground, textAlign: 'center' }]}>
+            You're Doing Great!
+          </Text>
+          <Text style={[styles.sub, { color: colors.mutedForeground }]}>
+            Based on your results, you do not appear to have dyslexia.
+            Your reading and recognition skills are excellent — keep it up!
+          </Text>
+
+          {/* Celebration card */}
+          <View style={[styles.resultCard, { backgroundColor: '#10B98112', borderColor: '#10B98140', borderWidth: 1.5, borderRadius: 20 }]}>
+            <View style={styles.noBadgeRow}>
+              <Feather name="check-circle" size={20} color="#10B981" />
+              <Text style={[styles.noBadgeText, { color: '#10B981' }]}>No Dyslexia Indicators Detected</Text>
+            </View>
+            <View style={[styles.divider, { backgroundColor: '#10B98130' }]} />
+            <Text style={[styles.resultNote, { color: colors.mutedForeground }]}>
+              All 6 assessment areas — letter recognition, color patterns, rhyming, rapid naming, spelling, and memory — came back strong. There's nothing to worry about!
+            </Text>
+            <View style={[styles.divider, { backgroundColor: '#10B98130' }]} />
+            <Text style={[styles.resultNote, { color: colors.mutedForeground }]}>
+              You can still use the games in this app to keep your reading skills sharp and have fun!
+            </Text>
+          </View>
+
+          <Pressable
+            onPress={handleFinish}
+            style={({ pressed }) => [styles.btn, { backgroundColor: '#10B981', opacity: pressed ? 0.85 : 1 }]}
+          >
+            <Text style={[styles.btnText, { color: '#fff' }]}>Explore the App</Text>
+            <Feather name="arrow-right" size={18} color="#fff" />
+          </Pressable>
+        </View>
+      );
+    }
+
+    // ── Dyslexia result ────────────────────────────────────────────────────
     const typeLabels: Record<string, string> = {
       phonological: 'Phonological Dyslexia',
       visual: 'Visual Dyslexia',
@@ -806,4 +860,6 @@ const styles = StyleSheet.create({
   resultDesc: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 20, marginTop: -4 },
   divider: { height: 1, marginVertical: 4 },
   resultNote: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 20 },
+  noBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  noBadgeText: { fontSize: 15, fontFamily: 'Inter_700Bold' },
 });

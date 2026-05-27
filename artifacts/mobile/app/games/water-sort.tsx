@@ -76,27 +76,43 @@ function isWon(tubes: Tube[]): boolean {
 function getLevelConfig(lvl: number) {
   const numColors = Math.min(6, 3 + Math.floor((lvl - 1) / 2));
   const numEmpty = 2;
-  const scrambleMoves = 20 + lvl * 10;
-  return { numColors, numEmpty, scrambleMoves };
+  return { numColors, numEmpty };
 }
 
 function makePuzzle(level: number): Tube[] {
-  const { numColors, numEmpty, scrambleMoves } = getLevelConfig(level);
+  const { numColors, numEmpty } = getLevelConfig(level);
   const colorKeys = (['R', 'B', 'G', 'Y', 'P', 'O'] as Color[]).slice(0, numColors);
-
-  let tubes: Tube[] = [
-    ...colorKeys.map(c => [c, c, c, c] as Tube),
-    ...Array(numEmpty).fill(null).map(() => [] as Tube),
-  ];
-
   const rng = seededRng(level * 9973 + 54321);
-  let done = 0, tries = 0;
-  while (done < scrambleMoves && tries < scrambleMoves * 40) {
-    tries++;
-    const s = Math.floor(rng() * tubes.length);
-    const d = Math.floor(rng() * tubes.length);
-    if (canPour(tubes, s, d)) { tubes = doPour(tubes, s, d); done++; }
+
+  // All segments: 4 copies of each color — shuffle them with Fisher-Yates
+  const allSegs: Color[] = colorKeys.flatMap(c => [c, c, c, c] as Color[]);
+  for (let i = allSegs.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [allSegs[i], allSegs[j]] = [allSegs[j], allSegs[i]];
   }
+
+  // Distribute into tubes of CAPACITY (bottom → top = index 0 → CAPACITY-1)
+  const tubes: Tube[] = [];
+  for (let t = 0; t < numColors; t++) {
+    tubes.push(allSegs.slice(t * CAPACITY, (t + 1) * CAPACITY) as Tube);
+  }
+
+  // Break any tubes that ended up all-same-color (already solved)
+  tubes.forEach((tube, ti) => {
+    if (tube.length === CAPACITY && tube.every(c => c === tube[0])) {
+      // Find another tube with a different color at bottom and swap their bottom segments
+      for (let tj = 0; tj < tubes.length; tj++) {
+        if (tj !== ti && tubes[tj][0] !== tube[0]) {
+          [tubes[ti][0], tubes[tj][0]] = [tubes[tj][0], tubes[ti][0]];
+          break;
+        }
+      }
+    }
+  });
+
+  // Add empty tubes
+  for (let i = 0; i < numEmpty; i++) tubes.push([]);
+
   return tubes;
 }
 

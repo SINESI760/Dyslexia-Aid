@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, Platform, ScrollView, Switch, Pressable, Alert,
+  View, Text, StyleSheet, Platform, ScrollView, Switch, Pressable,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -17,31 +17,19 @@ export default function SettingsScreen() {
   const { profile, resetProfile } = useUser();
   const topPad = Platform.OS === 'web' ? 60 : insets.top;
   const botPad = Platform.OS === 'web' ? 84 : insets.bottom + 20;
+  const [confirmVisible, setConfirmVisible] = useState(false);
   const [resetting, setResetting] = useState(false);
 
-  const handleReset = () => {
-    Alert.alert(
-      'Reset Profile',
-      'This will erase all your data — profile, progress, and scores. You\'ll start fresh from onboarding. Continue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset Everything',
-          style: 'destructive',
-          onPress: async () => {
-            setResetting(true);
-            try {
-              await resetProfile();
-              // Clear daily progress too
-              await AsyncStorage.removeItem('@dyslexia_daily_progress_v1');
-            } finally {
-              setResetting(false);
-              router.replace('/onboarding');
-            }
-          },
-        },
-      ]
-    );
+  const doReset = async () => {
+    setResetting(true);
+    try {
+      await resetProfile();
+      await AsyncStorage.removeItem('@dyslexia_daily_progress_v1');
+    } finally {
+      setResetting(false);
+      setConfirmVisible(false);
+      router.replace('/onboarding');
+    }
   };
 
   const isDark = theme === 'dark';
@@ -116,15 +104,40 @@ export default function SettingsScreen() {
         {/* Dev Tools */}
         <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>DEVELOPER</Text>
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Pressable style={styles.row} onPress={handleReset} disabled={resetting}>
+          <Pressable style={styles.row} onPress={() => setConfirmVisible(true)} disabled={resetting}>
             <View style={[styles.iconWrap, { backgroundColor: '#EF444418' }]}>
               <Feather name="trash-2" size={18} color="#EF4444" />
             </View>
-            <Text style={[styles.rowLabel, { color: '#EF4444' }]}>
-              {resetting ? 'Resetting…' : 'Reset Profile & Start Over'}
-            </Text>
+            <Text style={[styles.rowLabel, { color: '#EF4444' }]}>Reset Profile & Start Over</Text>
             <Feather name="chevron-right" size={16} color="#EF444488" />
           </Pressable>
+
+          {/* Inline confirmation — works on web + native */}
+          {confirmVisible && (
+            <View style={[styles.confirmBox, { borderTopColor: colors.border }]}>
+              <Text style={[styles.confirmTitle, { color: colors.foreground }]}>Are you sure?</Text>
+              <Text style={[styles.confirmSub, { color: colors.mutedForeground }]}>
+                This erases your profile, progress, and all scores. You'll restart from onboarding.
+              </Text>
+              <View style={styles.confirmBtns}>
+                <Pressable
+                  style={[styles.confirmBtn, { backgroundColor: colors.muted }]}
+                  onPress={() => setConfirmVisible(false)}
+                >
+                  <Text style={[styles.confirmBtnText, { color: colors.foreground }]}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.confirmBtn, { backgroundColor: '#EF4444' }]}
+                  onPress={doReset}
+                  disabled={resetting}
+                >
+                  <Text style={[styles.confirmBtnText, { color: '#fff' }]}>
+                    {resetting ? 'Resetting…' : 'Yes, Reset'}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* About */}
@@ -178,4 +191,15 @@ const styles = StyleSheet.create({
   rowLabel: { flex: 1, fontSize: 15, fontFamily: 'Inter_500Medium' },
   rowValue: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   divider: { height: 1, marginHorizontal: 16 },
+  confirmBox: {
+    borderTopWidth: 1, padding: 16, gap: 10,
+  },
+  confirmTitle: { fontSize: 15, fontFamily: 'Inter_700Bold' },
+  confirmSub: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 19 },
+  confirmBtns: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  confirmBtn: {
+    flex: 1, paddingVertical: 12, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  confirmBtnText: { fontSize: 14, fontFamily: 'Inter_700Bold' },
 });

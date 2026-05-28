@@ -9,7 +9,8 @@ export default function GamesLayout() {
       <Stack.Screen name="balloon-pop" />
       <Stack.Screen name="letter-sort" />
       <Stack.Screen name="word-scramble" />
-      <Stack.Screen name="cake-tower" />
+      <Stack.Screen name="water-sort" />
+      <Stack.Screen name="fruit-crush" />
       <Stack.Screen name="sequence" />
       <Stack.Screen name="complete" />
     </Stack>

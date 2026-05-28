@@ -19,6 +19,7 @@ const GAP = 4;
 const GRID_W = COLS * CELL_SIZE + (COLS - 1) * GAP;
 const GRID_H = ROWS * CELL_SIZE + (ROWS - 1) * GAP;
 const SWIPE_THRESHOLD = CELL_SIZE * 0.35;
+const HINT_DELAY_MS = 4000; // show hint after 4s of no move
 
 // ── Daily level ────────────────────────────────────────────────────────────
 function getDailyLevel(): number {
@@ -56,7 +57,8 @@ function makeGrid(numFruits: number, rng: () => number): number[][] {
     );
   }
   // Ensure at least one valid move exists
-  while (!hasPossibleMoves(grid, numFruits)) {
+  let attempts = 0;
+  while (!hasPossibleMoves(grid) && attempts++ < 20) {
     grid = grid.map(row => row.map(() => Math.floor(rng() * numFruits)));
   }
   return grid;
@@ -93,7 +95,7 @@ function swapCells(grid: number[][], r1: number, c1: number, r2: number, c2: num
   return next;
 }
 
-function hasPossibleMoves(grid: number[][], _numFruits?: number): boolean {
+function hasPossibleMoves(grid: number[][]): boolean {
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       if (c + 1 < COLS && findMatches(swapCells(grid, r, c, r, c + 1)).size > 0) return true;
@@ -101,6 +103,19 @@ function hasPossibleMoves(grid: number[][], _numFruits?: number): boolean {
     }
   }
   return false;
+}
+
+// Returns the two cells that form the first valid move, or null
+function findFirstValidMove(grid: number[][]): { r1: number; c1: number; r2: number; c2: number } | null {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (c + 1 < COLS && findMatches(swapCells(grid, r, c, r, c + 1)).size > 0)
+        return { r1: r, c1: c, r2: r, c2: c + 1 };
+      if (r + 1 < ROWS && findMatches(swapCells(grid, r, c, r + 1, c)).size > 0)
+        return { r1: r, c1: c, r2: r + 1, c2: c };
+    }
+  }
+  return null;
 }
 
 function applyGravity(
@@ -130,16 +145,23 @@ export default function FruitCrushScreen() {
 
   const [dailyLevel] = useState(getDailyLevel);
   const { numFruits, maxMoves, targetScore } = getLevelConfig(dailyLevel);
-  const rngRef = useRef(seededRng(dailyLevel * 77777 + new Date().setHours(0, 0, 0, 0)));
+
+  // Fully random seed each session so board is different every play
+  const rngRef = useRef(seededRng(((Date.now() + Math.random() * 1e9) ^ 0xdeadbeef) >>> 0));
 
   const [grid, setGrid] = useState<number[][]>(() => makeGrid(numFruits, rngRef.current));
   const [score, setScore] = useState(0);
   const [moves, setMoves] = useState(maxMoves);
   const [combo, setCombo] = useState(0);
-  const [phase, setPhase] = useState<'idle' | 'resolving' | 'done'>('idle');
+  const [phase, setPhase] = useState<'idle' | 'resolving' | 'shuffling' | 'done'>('idle');
   const [gameResult, setGameResult] = useState<'win' | 'lose' | null>(null);
-  const [noMovesVisible, setNoMovesVisible] = useState(false);
   const [startTime] = useState(Date.now());
+
+  // Hint state — highlight cells of the next valid move after inactivity
+  const [hintCells, setHintCells] = useState<Set<string>>(new Set());
+  const lastMoveTimeRef = useRef(Date.now());
+  const hintAnim = useRef(new Animated.Value(1)).current;
+  const hintLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
   // Animated state
   const [matchedKeys, setMatchedKeys] = useState<Set<string>>(new Set());
@@ -151,7 +173,7 @@ export default function FruitCrushScreen() {
   const fallAnim = useRef(new Animated.Value(-CELL_SIZE - GAP)).current;
   const dragOffsetX = useRef(new Animated.Value(0)).current;
   const dragOffsetY = useRef(new Animated.Value(0)).current;
-  const selectedScale = useRef(new Animated.Value(1)).current;
+  const shuffleSpinAnim = useRef(new Animated.Value(0)).current;
 
   // Refs for stable PanResponder closures
   const gridRef = useRef(grid);
@@ -160,7 +182,6 @@ export default function FruitCrushScreen() {
   const movesRef = useRef(moves);
   const draggingRef = useRef<{ r: number; c: number } | null>(null);
   const selectedRef = useRef<{ r: number; c: number } | null>(null);
-  // Grid container measured position (page-relative)
   const gridOrigin = useRef({ x: 0, y: 0 });
   const gridViewRef = useRef<View>(null);
 
@@ -169,6 +190,87 @@ export default function FruitCrushScreen() {
   scoreRef.current = score;
   movesRef.current = moves;
   selectedRef.current = selectedCell;
+
+  // ── Hint timer ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (phase !== 'idle') {
+      setHintCells(new Set());
+      hintLoopRef.current?.stop();
+      hintAnim.setValue(1);
+      return;
+    }
+    const interval = setInterval(() => {
+      if (Date.now() - lastMoveTimeRef.current >= HINT_DELAY_MS) {
+        const move = findFirstValidMove(gridRef.current);
+        if (move) {
+          const cells = new Set([`${move.r1},${move.c1}`, `${move.r2},${move.c2}`]);
+          setHintCells(cells);
+          hintLoopRef.current?.stop();
+          hintAnim.setValue(1);
+          hintLoopRef.current = Animated.loop(
+            Animated.sequence([
+              Animated.timing(hintAnim, { toValue: 1.18, duration: 480, useNativeDriver: false }),
+              Animated.timing(hintAnim, { toValue: 1, duration: 480, useNativeDriver: false }),
+            ])
+          );
+          hintLoopRef.current.start();
+        }
+      } else {
+        setHintCells(new Set());
+        hintLoopRef.current?.stop();
+        hintAnim.setValue(1);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [phase]);
+
+  // ── Shuffle spinner animation ────────────────────────────────────────────
+  useEffect(() => {
+    if (phase === 'shuffling') {
+      shuffleSpinAnim.setValue(0);
+      Animated.loop(
+        Animated.timing(shuffleSpinAnim, { toValue: 1, duration: 700, useNativeDriver: false })
+      ).start();
+    } else {
+      shuffleSpinAnim.setValue(0);
+    }
+  }, [phase]);
+
+  // ── Auto-shuffle when no moves ───────────────────────────────────────────
+  const shuffleBoard = useCallback((g: number[][]) => {
+    setPhase('shuffling');
+    phaseRef.current = 'shuffling';
+    setHintCells(new Set());
+
+    setTimeout(() => {
+      const shuffleRng = seededRng(((Date.now() + Math.random() * 1e9) ^ 0xcafebabe) >>> 0);
+      const flat = g.flat();
+      for (let i = flat.length - 1; i > 0; i--) {
+        const j = Math.floor(shuffleRng() * (i + 1));
+        [flat[i], flat[j]] = [flat[j], flat[i]];
+      }
+      let newGrid = Array.from({ length: ROWS }, (_, r) => flat.slice(r * COLS, (r + 1) * COLS));
+      // Clear accidental matches
+      for (let pass = 0; pass < 8; pass++) {
+        const m = findMatches(newGrid);
+        if (m.size === 0) break;
+        newGrid = newGrid.map((row, r) =>
+          row.map((cell, c) => m.has(`${r},${c}`) ? Math.floor(shuffleRng() * numFruits) : cell)
+        );
+      }
+      // Guarantee a valid move
+      let attempts = 0;
+      while (!hasPossibleMoves(newGrid) && attempts++ < 20) {
+        newGrid = newGrid.map(row => row.map(() => Math.floor(shuffleRng() * numFruits)));
+      }
+      setGrid(newGrid);
+      gridRef.current = newGrid;
+      lastMoveTimeRef.current = Date.now();
+      setPhase('idle');
+      phaseRef.current = 'idle';
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }, 1400);
+  }, [numFruits]);
 
   // ── Cascade resolver ────────────────────────────────────────────────────
   const resolveRef = useRef<((g: number[][], c: number) => void) | null>(null);
@@ -179,11 +281,12 @@ export default function FruitCrushScreen() {
       setMatchedKeys(new Set());
       setNewCellKeys(new Set());
       setCombo(0);
-      setPhase('idle');
-      phaseRef.current = 'idle';
-      // Check for no possible moves
       if (!hasPossibleMoves(g)) {
-        setTimeout(() => setNoMovesVisible(true), 300);
+        // Auto-shuffle with animation — no popup needed
+        setTimeout(() => shuffleBoard(g), 300);
+      } else {
+        setPhase('idle');
+        phaseRef.current = 'idle';
       }
       return;
     }
@@ -222,6 +325,13 @@ export default function FruitCrushScreen() {
       return false;
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    // Reset hint timer on a valid move
+    lastMoveTimeRef.current = Date.now();
+    setHintCells(new Set());
+    hintLoopRef.current?.stop();
+    hintAnim.setValue(1);
+
     const newMoves = movesRef.current - 1;
     setMoves(newMoves);
     movesRef.current = newMoves;
@@ -235,43 +345,9 @@ export default function FruitCrushScreen() {
     return true;
   }, []);
 
-  // ── Shuffle when no moves ─────────────────────────────────────────────────
-  const handleShuffle = useCallback(() => {
-    setNoMovesVisible(false);
-    const shuffleRng = seededRng((Date.now() ^ 0xdeadbeef) >>> 0);
-    const flat = gridRef.current.flat();
-    for (let i = flat.length - 1; i > 0; i--) {
-      const j = Math.floor(shuffleRng() * (i + 1));
-      [flat[i], flat[j]] = [flat[j], flat[i]];
-    }
-    let newGrid = Array.from({ length: ROWS }, (_, r) => flat.slice(r * COLS, (r + 1) * COLS));
-    // Clear any accidental matches
-    for (let pass = 0; pass < 8; pass++) {
-      const m = findMatches(newGrid);
-      if (m.size === 0) break;
-      newGrid = newGrid.map((row, r) =>
-        row.map((cell, c) => m.has(`${r},${c}`) ? Math.floor(shuffleRng() * numFruits) : cell)
-      );
-    }
-    if (!hasPossibleMoves(newGrid)) {
-      // Force a valid move by swapping two non-adjacent same-type cells in same row
-      outer: for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS - 2; c++) {
-          if (newGrid[r][c] === newGrid[r][c + 2]) {
-            [newGrid[r][c], newGrid[r][c + 1]] = [newGrid[r][c + 1], newGrid[r][c]];
-            break outer;
-          }
-        }
-      }
-    }
-    setGrid(newGrid);
-    gridRef.current = newGrid;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [numFruits]);
-
   // ── Win check ────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (score >= targetScore && phase !== 'done') {
+    if (score >= targetScore && phase !== 'done' && phase !== 'shuffling') {
       setPhase('done');
       phaseRef.current = 'done';
       setTimeout(() => setGameResult('win'), 400);
@@ -290,7 +366,6 @@ export default function FruitCrushScreen() {
   }, []);
 
   // ── PanResponder ──────────────────────────────────────────────────────────
-  // Identify which cell was touched using page coordinates minus grid origin
   const getCellFromPage = (px: number, py: number) => {
     const localX = px - gridOrigin.current.x;
     const localY = py - gridOrigin.current.y;
@@ -323,7 +398,6 @@ export default function FruitCrushScreen() {
         const absDx = Math.abs(gs.dx);
         const absDy = Math.abs(gs.dy);
         const maxSlide = CELL_SIZE + GAP;
-        // Constrain to dominant axis only, clamp to one cell width
         if (absDx >= absDy) {
           dragOffsetX.setValue(Math.max(-maxSlide, Math.min(maxSlide, gs.dx)));
           dragOffsetY.setValue(0);
@@ -349,22 +423,17 @@ export default function FruitCrushScreen() {
         const isTap = absDx < 8 && absDy < 8;
 
         if (isTap) {
-          // Tap logic: select or swap with selected
           const prev = selectedRef.current;
           if (prev && Math.abs(prev.r - from.r) + Math.abs(prev.c - from.c) === 1) {
-            // Adjacent — try swap
             const swapped = performSwap(prev.r, prev.c, from.r, from.c);
             if (!swapped) {
-              // Invalid swap — select new cell if it has content
               setSelectedCell(gridRef.current[from.r][from.c] >= 0 ? { r: from.r, c: from.c } : null);
               selectedRef.current = gridRef.current[from.r][from.c] >= 0 ? { r: from.r, c: from.c } : null;
             }
           } else if (prev && prev.r === from.r && prev.c === from.c) {
-            // Tapped same cell — deselect
             setSelectedCell(null);
             selectedRef.current = null;
           } else {
-            // Select new cell
             setSelectedCell({ r: from.r, c: from.c });
             selectedRef.current = { r: from.r, c: from.c };
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -372,7 +441,6 @@ export default function FruitCrushScreen() {
           return;
         }
 
-        // Swipe — determine direction
         let dr = 0, dc = 0;
         if (absDx >= absDy && absDx > SWIPE_THRESHOLD) dc = gs.dx > 0 ? 1 : -1;
         else if (absDy > absDx && absDy > SWIPE_THRESHOLD) dr = gs.dy > 0 ? 1 : -1;
@@ -404,6 +472,7 @@ export default function FruitCrushScreen() {
   };
 
   const scorePercent = Math.min(100, (score / targetScore) * 100);
+  const spinDeg = shuffleSpinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   return (
     <View style={[styles.container, { backgroundColor: '#0a0a1a', paddingTop: topPad }]}>
@@ -434,7 +503,7 @@ export default function FruitCrushScreen() {
           )}
         </View>
         <View style={styles.progressTrack}>
-          <Animated.View style={[styles.progressFill, { width: `${scorePercent}%` as any }]} />
+          <View style={[styles.progressFill, { width: `${scorePercent}%` as any }]} />
         </View>
       </View>
 
@@ -452,6 +521,7 @@ export default function FruitCrushScreen() {
               const isSelected = !isDragging && selectedCell?.r === r && selectedCell?.c === c;
               const isMatched = matchedKeys.has(`${r},${c}`);
               const isNew = newCellKeys.has(`${r},${c}`);
+              const isHinted = hintCells.has(`${r},${c}`);
               const bgColor = FRUIT_BG[fruit] ?? '#eee';
 
               return (
@@ -463,10 +533,10 @@ export default function FruitCrushScreen() {
                       left: c * (CELL_SIZE + GAP),
                       top: r * (CELL_SIZE + GAP),
                       backgroundColor: bgColor,
-                      borderWidth: isSelected ? 2.5 : isDragging ? 2 : 0,
-                      borderColor: isSelected ? '#fff' : isDragging ? '#FFD700' : 'transparent',
-                      zIndex: isDragging ? 20 : isSelected ? 10 : isMatched ? 5 : 1,
-                      opacity: isMatched ? undefined : isDragging ? 1 : isSelected ? 1 : 0.92,
+                      borderWidth: isHinted ? 2.5 : isSelected ? 2.5 : isDragging ? 2 : 0,
+                      borderColor: isHinted ? '#FFD700' : isSelected ? '#fff' : isDragging ? '#FFD700' : 'transparent',
+                      zIndex: isDragging ? 20 : isSelected ? 10 : isHinted ? 8 : isMatched ? 5 : 1,
+                      opacity: isMatched ? undefined : 0.92,
                       transform: [
                         ...(isDragging
                           ? [{ translateX: dragOffsetX }, { translateY: dragOffsetY }]
@@ -474,15 +544,16 @@ export default function FruitCrushScreen() {
                         ...(isNew ? [{ translateY: fallAnim }] : []),
                         {
                           scale: isMatched ? matchShrinkAnim
+                            : isHinted ? hintAnim
                             : isDragging ? 1.14
                             : isSelected ? 1.1
                             : 1
                         },
                       ],
-                      shadowColor: isDragging ? '#FFD700' : isSelected ? '#fff' : 'transparent',
-                      shadowOpacity: (isDragging || isSelected) ? 0.7 : 0,
-                      shadowRadius: (isDragging || isSelected) ? 10 : 0,
-                      elevation: isDragging ? 14 : isSelected ? 8 : 1,
+                      shadowColor: isHinted ? '#FFD700' : isDragging ? '#FFD700' : isSelected ? '#fff' : 'transparent',
+                      shadowOpacity: (isHinted || isDragging || isSelected) ? 0.9 : 0,
+                      shadowRadius: isHinted ? 14 : (isDragging || isSelected) ? 10 : 0,
+                      elevation: isDragging ? 14 : isSelected ? 8 : isHinted ? 10 : 1,
                     },
                   ]}
                 >
@@ -499,26 +570,31 @@ export default function FruitCrushScreen() {
       {/* Instruction */}
       <View style={styles.instruction}>
         <Text style={styles.instructionText}>
-          {selectedCell ? 'Tap an adjacent fruit to swap  ↔' : 'Tap to select · Swipe or tap neighbor to swap'}
+          {hintCells.size > 0
+            ? '✨ Hint: swap the glowing fruits!'
+            : selectedCell
+            ? 'Tap an adjacent fruit to swap  ↔'
+            : 'Tap to select · Swipe or tap neighbor to swap'}
         </Text>
         <Text style={styles.levelInfo}>{numFruits} fruits · {maxMoves} moves · target {targetScore}</Text>
       </View>
 
       <View style={{ height: botPad + 16 }} />
 
-      {/* No-moves popup */}
-      {noMovesVisible && (
+      {/* Shuffling overlay — auto-triggered, no button needed */}
+      {phase === 'shuffling' && (
         <View style={styles.overlay}>
-          <View style={styles.noMovesCard}>
-            <Text style={styles.noMovesEmoji}>🔀</Text>
-            <Text style={styles.noMovesTitleText}>No More Moves!</Text>
-            <Text style={styles.noMovesSub}>
-              The board has been reshuffled so you can keep playing.
-            </Text>
-            <Pressable onPress={handleShuffle} style={styles.shuffleBtn}>
-              <Feather name="shuffle" size={18} color="#fff" />
-              <Text style={styles.shuffleBtnText}>Shuffle Board</Text>
-            </Pressable>
+          <View style={styles.shufflingCard}>
+            <Animated.Text style={[styles.shuffleEmoji, { transform: [{ rotate: spinDeg }] }]}>
+              🔀
+            </Animated.Text>
+            <Text style={styles.shufflingTitle}>No More Moves!</Text>
+            <Text style={styles.shufflingSub}>Shuffling the board…</Text>
+            <View style={styles.shuffleDots}>
+              {[0, 1, 2].map(i => (
+                <View key={i} style={styles.shuffleDot} />
+              ))}
+            </View>
           </View>
         </View>
       )}
@@ -590,23 +666,19 @@ const styles = StyleSheet.create({
   levelInfo: { color: '#2a2a3a', fontSize: 10, fontFamily: 'Inter_400Regular' },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.85)',
+    backgroundColor: 'rgba(0,0,0,0.82)',
     alignItems: 'center', justifyContent: 'center',
   },
-  noMovesCard: {
-    backgroundColor: '#0f1020', borderRadius: 24, padding: 32,
-    alignItems: 'center', gap: 12, width: '84%',
+  shufflingCard: {
+    backgroundColor: '#0f1020', borderRadius: 24, padding: 36,
+    alignItems: 'center', gap: 10, width: '80%',
     borderWidth: 1, borderColor: '#2a2a4a',
   },
-  noMovesEmoji: { fontSize: 48 },
-  noMovesTitleText: { color: '#fff', fontSize: 22, fontFamily: 'Inter_700Bold' },
-  noMovesSub: { color: '#777', fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 20 },
-  shuffleBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#6366F1', paddingVertical: 14, paddingHorizontal: 28,
-    borderRadius: 16, marginTop: 4,
-  },
-  shuffleBtnText: { color: '#fff', fontSize: 16, fontFamily: 'Inter_700Bold' },
+  shuffleEmoji: { fontSize: 52 },
+  shufflingTitle: { color: '#fff', fontSize: 20, fontFamily: 'Inter_700Bold', marginTop: 4 },
+  shufflingSub: { color: '#888', fontSize: 13, fontFamily: 'Inter_400Regular' },
+  shuffleDots: { flexDirection: 'row', gap: 8, marginTop: 6 },
+  shuffleDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#6366F1' },
   resultCard: {
     backgroundColor: '#0f1020', borderRadius: 24, padding: 32,
     alignItems: 'center', gap: 12, width: '84%',

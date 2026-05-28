@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, Platform, ScrollView, Switch,
+  View, Text, StyleSheet, Platform, ScrollView, Switch, Pressable, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
@@ -12,9 +14,35 @@ export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { theme, setTheme } = useTheme();
-  const { profile } = useUser();
+  const { profile, resetProfile } = useUser();
   const topPad = Platform.OS === 'web' ? 60 : insets.top;
   const botPad = Platform.OS === 'web' ? 84 : insets.bottom + 20;
+  const [resetting, setResetting] = useState(false);
+
+  const handleReset = () => {
+    Alert.alert(
+      'Reset Profile',
+      'This will erase all your data — profile, progress, and scores. You\'ll start fresh from onboarding. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset Everything',
+          style: 'destructive',
+          onPress: async () => {
+            setResetting(true);
+            try {
+              await resetProfile();
+              // Clear daily progress too
+              await AsyncStorage.removeItem('@dyslexia_daily_progress_v1');
+            } finally {
+              setResetting(false);
+              router.replace('/onboarding');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const isDark = theme === 'dark';
 
@@ -84,6 +112,20 @@ export default function SettingsScreen() {
             </View>
           </>
         )}
+
+        {/* Dev Tools */}
+        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>DEVELOPER</Text>
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Pressable style={styles.row} onPress={handleReset} disabled={resetting}>
+            <View style={[styles.iconWrap, { backgroundColor: '#EF444418' }]}>
+              <Feather name="trash-2" size={18} color="#EF4444" />
+            </View>
+            <Text style={[styles.rowLabel, { color: '#EF4444' }]}>
+              {resetting ? 'Resetting…' : 'Reset Profile & Start Over'}
+            </Text>
+            <Feather name="chevron-right" size={16} color="#EF444488" />
+          </Pressable>
+        </View>
 
         {/* About */}
         <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>ABOUT</Text>

@@ -97,17 +97,98 @@ const SPELLING_QUESTIONS = [
   { prompt: 'Which spelling is correct?', options: ['COUD', 'COULD', 'KOULD', 'COLUD'], answer: 'COULD' },
 ];
 
-// ── Phase 6: Memory sequence ──
+// ── Phase 6: Memory sequence (middle group) ──
 const SEQUENCE_ROUNDS = [
   { seq: ['A', 'B', 'C'], options: ['A', 'B', 'C', 'D', 'E', 'F'] },
   { seq: ['D', 'A', 'C'], options: ['A', 'B', 'C', 'D', 'E', 'F'] },
   { seq: ['B', 'E', 'D'], options: ['A', 'B', 'C', 'D', 'E', 'F'] },
 ];
 
+// ── Age group variants ─────────────────────────────────────────────────────
+
+// Young (≤9): simple letter recognition
+const LETTER_QUESTIONS_YOUNG = [
+  { prompt: 'Which letter is "b"?', options: ['d', 'b', 'p', 'q'], answer: 'b' },
+  { prompt: 'Which letter is "d"?', options: ['b', 'q', 'd', 'p'], answer: 'd' },
+  { prompt: 'Which letter is "p"?', options: ['q', 'b', 'p', 'd'], answer: 'p' },
+  { prompt: 'Which word says "cat"?', options: ['cat', 'bat', 'cot', 'cut'], answer: 'cat' },
+  { prompt: 'Which word says "dog"?', options: ['bog', 'dot', 'dog', 'log'], answer: 'dog' },
+];
+
+// Adult (14+): trickier reversals & homophones
+const LETTER_QUESTIONS_ADULT = [
+  { prompt: 'Which is "bird" (NOT a reversal)?', options: ['brid', 'drib', 'bird', 'pird'], answer: 'bird' },
+  { prompt: 'Which word says "stop" (not "pots")?', options: ['pots', 'tops', 'stop', 'spot'], answer: 'stop' },
+  { prompt: 'Which word is "form" (not "from")?', options: ['from', 'form', 'fomr', 'fmor'], answer: 'form' },
+  { prompt: 'Which is "name" written correctly?', options: ['mane', 'name', 'nmae', 'amen'], answer: 'name' },
+  { prompt: 'Select the correctly written word:', options: ['wsa', 'saw', 'was', 'swa'], answer: 'saw' },
+];
+
+// Young rhymes
+const RHYME_QUESTIONS_YOUNG = [
+  { prompt: 'Which word rhymes with "CAT"?', options: ['BAT', 'DOG', 'PIG', 'CUP'], answer: 'BAT' },
+  { prompt: 'Which word rhymes with "TOP"?', options: ['CAP', 'HOP', 'RUN', 'MAN'], answer: 'HOP' },
+  { prompt: 'Which word rhymes with "BIG"?', options: ['BAD', 'BIT', 'JIG', 'BOX'], answer: 'JIG' },
+  { prompt: 'Which word rhymes with "BED"?', options: ['RED', 'RUN', 'BIG', 'SIT'], answer: 'RED' },
+  { prompt: 'Which word rhymes with "MAT"?', options: ['MOP', 'SAT', 'RUN', 'PIG'], answer: 'SAT' },
+];
+
+// Adult rhymes — irregular/silent letter words
+const RHYME_QUESTIONS_ADULT = [
+  { prompt: 'Which rhymes with "THOUGH"?', options: ['TOUGH', 'GO', 'COUGH', 'THROUGH'], answer: 'GO' },
+  { prompt: 'Which rhymes with "KNIGHT"?', options: ['KNIT', 'NIGHT', 'KNACK', 'KNIFE'], answer: 'NIGHT' },
+  { prompt: 'Which rhymes with "PEAR"?', options: ['PEER', 'PORE', 'BEAR', 'POUR'], answer: 'BEAR' },
+  { prompt: 'Which rhymes with "COUGH"?', options: ['THOUGH', 'ROUGH', 'THROUGH', 'DOUGH'], answer: 'ROUGH' },
+  { prompt: 'Which rhymes with "BOUGH"?', options: ['DOUGH', 'COW', 'THOUGH', 'COUGH'], answer: 'COW' },
+];
+
+// Young spelling — simple 3-letter words
+const SPELLING_QUESTIONS_YOUNG = [
+  { prompt: 'Which spelling is correct?', options: ['CAT', 'KAT', 'CAD', 'KAD'], answer: 'CAT' },
+  { prompt: 'Which spelling is correct?', options: ['DOG', 'DOJ', 'BOG', 'DOQ'], answer: 'DOG' },
+  { prompt: 'Which spelling is correct?', options: ['SUN', 'ZUN', 'SAN', 'SON'], answer: 'SUN' },
+  { prompt: 'Which spelling is correct?', options: ['BAT', 'PAT', 'DAT', 'BAD'], answer: 'BAT' },
+  { prompt: 'Which spelling is correct?', options: ['RUN', 'RAN', 'RIN', 'RUM'], answer: 'RUN' },
+];
+
+// Adult spelling — complex irregular words
+const SPELLING_QUESTIONS_ADULT = [
+  { prompt: 'Which spelling is correct?', options: ['RHYTHM', 'RYTHM', 'RHYTM', 'RYTHEM'], answer: 'RHYTHM' },
+  { prompt: 'Which spelling is correct?', options: ['NECESSARY', 'NECCESSARY', 'NECESARY', 'NEECSSARY'], answer: 'NECESSARY' },
+  { prompt: 'Which spelling is correct?', options: ['ACCOMMODATE', 'ACCOMODATE', 'ACOMMODATE', 'ACCOMMADATE'], answer: 'ACCOMMODATE' },
+  { prompt: 'Which spelling is correct?', options: ['OCCURRENCE', 'OCURRENCE', 'OCCURENCE', 'OCCURRANCE'], answer: 'OCCURRENCE' },
+  { prompt: 'Which spelling is correct?', options: ['CONSCIENTIOUS', 'CONCIENTIOUS', 'CONSCIENCIOUS', 'CONSCIENTOUS'], answer: 'CONSCIENTIOUS' },
+];
+
+// Young sequence — only 2 letters
+const SEQUENCE_ROUNDS_YOUNG = [
+  { seq: ['A', 'B'], options: ['A', 'B', 'C', 'D'] },
+  { seq: ['C', 'A'], options: ['A', 'B', 'C', 'D'] },
+  { seq: ['B', 'D'], options: ['A', 'B', 'C', 'D'] },
+];
+
+// Adult sequence — 4 letters
+const SEQUENCE_ROUNDS_ADULT = [
+  { seq: ['A', 'D', 'B', 'F'], options: ['A', 'B', 'C', 'D', 'E', 'F'] },
+  { seq: ['C', 'A', 'F', 'B'], options: ['A', 'B', 'C', 'D', 'E', 'F'] },
+  { seq: ['B', 'E', 'A', 'D'], options: ['A', 'B', 'C', 'D', 'E', 'F'] },
+];
+
 export default function AssessmentScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { completeAssessment } = useUser();
+  const { completeAssessment, profile } = useUser();
+
+  // Pick questions appropriate for the user's age group
+  const ageGroup: 'young' | 'middle' | 'adult' =
+    !profile?.age || profile.age <= 9 ? 'young'
+    : profile.age <= 13 ? 'middle'
+    : 'adult';
+
+  const activeLetterQs   = ageGroup === 'young' ? LETTER_QUESTIONS_YOUNG   : ageGroup === 'adult' ? LETTER_QUESTIONS_ADULT   : LETTER_QUESTIONS;
+  const activeRhymeQs    = ageGroup === 'young' ? RHYME_QUESTIONS_YOUNG    : ageGroup === 'adult' ? RHYME_QUESTIONS_ADULT    : RHYME_QUESTIONS;
+  const activeSpellingQs = ageGroup === 'young' ? SPELLING_QUESTIONS_YOUNG : ageGroup === 'adult' ? SPELLING_QUESTIONS_ADULT : SPELLING_QUESTIONS;
+  const activeSeqRounds  = ageGroup === 'young' ? SEQUENCE_ROUNDS_YOUNG    : ageGroup === 'adult' ? SEQUENCE_ROUNDS_ADULT    : SEQUENCE_ROUNDS;
   const topPad = Platform.OS === 'web' ? 67 : insets.top;
   const botPad = Platform.OS === 'web' ? 34 : insets.bottom;
 
@@ -161,9 +242,9 @@ export default function AssessmentScreen() {
 
   const getQuestionsForPhase = (phaseKey: string) => {
     switch (phaseKey) {
-      case 'visual': return LETTER_QUESTIONS;
-      case 'phonological': return RHYME_QUESTIONS;
-      case 'surface': return SPELLING_QUESTIONS;
+      case 'visual': return activeLetterQs;
+      case 'phonological': return activeRhymeQs;
+      case 'surface': return activeSpellingQs;
       default: return [];
     }
   };
@@ -227,7 +308,7 @@ export default function AssessmentScreen() {
     const newSeq = [...userSeq, letter];
     setUserSeq(newSeq);
 
-    const target = SEQUENCE_ROUNDS[seqRound].seq;
+    const target = activeSeqRounds[seqRound].seq;
     if (newSeq.length === target.length) {
       const correct = newSeq.join('') === target.join('');
       setResults((prev) => ({
@@ -238,7 +319,7 @@ export default function AssessmentScreen() {
         },
       }));
       setTimeout(() => {
-        if (seqRound + 1 < SEQUENCE_ROUNDS.length) {
+        if (seqRound + 1 < activeSeqRounds.length) {
           setSeqRound((p) => p + 1);
           setUserSeq([]);
           setSeqPhase('show');
@@ -321,7 +402,9 @@ export default function AssessmentScreen() {
       totalQuestions: v.total,
       accuracy: v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0,
     }));
-    await completeAssessment(assessmentResults, dyslexiaResult.type, dyslexiaResult.level);
+    // Save null type when no dyslexia detected so home screen stays clean
+    const saveType = dyslexiaResult.noDyslexia ? null : dyslexiaResult.type;
+    await completeAssessment(assessmentResults, saveType, dyslexiaResult.level);
     router.replace('/(tabs)/');
   };
 
@@ -365,12 +448,12 @@ export default function AssessmentScreen() {
   );
 
   const renderLetterMCQ = () => {
-    const q = LETTER_QUESTIONS[questionIdx];
+    const q = activeLetterQs[questionIdx];
     if (!q) return null;
     return (
       <View style={styles.questionWrap}>
         <Text style={[styles.phaseLabel, { color: '#6366F1' }]}>
-          Letter Recognition · {questionIdx + 1}/{LETTER_QUESTIONS.length}
+          Letter Recognition · {questionIdx + 1}/{activeLetterQs.length}
         </Text>
         <Text style={[styles.question, { color: colors.foreground }]}>{q.prompt}</Text>
         <View style={styles.options}>
@@ -445,12 +528,12 @@ export default function AssessmentScreen() {
   };
 
   const renderRhymeMCQ = () => {
-    const q = RHYME_QUESTIONS[questionIdx];
+    const q = activeRhymeQs[questionIdx];
     if (!q) return null;
     return (
       <View style={styles.questionWrap}>
         <Text style={[styles.phaseLabel, { color: '#10B981' }]}>
-          Rhyming · {questionIdx + 1}/{RHYME_QUESTIONS.length}
+          Rhyming · {questionIdx + 1}/{activeRhymeQs.length}
         </Text>
         <Text style={[styles.question, { color: colors.foreground }]}>{q.prompt}</Text>
         <View style={styles.options}>
@@ -485,12 +568,12 @@ export default function AssessmentScreen() {
   };
 
   const renderSpellingMCQ = () => {
-    const q = SPELLING_QUESTIONS[questionIdx];
+    const q = activeSpellingQs[questionIdx];
     if (!q) return null;
     return (
       <View style={styles.questionWrap}>
         <Text style={[styles.phaseLabel, { color: '#EF4444' }]}>
-          Spelling · {questionIdx + 1}/{SPELLING_QUESTIONS.length}
+          Spelling · {questionIdx + 1}/{activeSpellingQs.length}
         </Text>
         <Text style={[styles.question, { color: colors.foreground }]}>{q.prompt}</Text>
         <View style={styles.options}>
@@ -581,11 +664,11 @@ export default function AssessmentScreen() {
   );
 
   const renderSequence = () => {
-    const round = SEQUENCE_ROUNDS[seqRound];
+    const round = activeSeqRounds[seqRound];
     return (
       <View style={styles.questionWrap}>
         <Text style={[styles.phaseLabel, { color: '#8B5CF6' }]}>
-          Memory Sequence · {seqRound + 1}/{SEQUENCE_ROUNDS.length}
+          Memory Sequence · {seqRound + 1}/{activeSeqRounds.length}
         </Text>
         <Text style={[styles.question, { color: colors.foreground }]}>
           {seqPhase === 'show' && showSeq

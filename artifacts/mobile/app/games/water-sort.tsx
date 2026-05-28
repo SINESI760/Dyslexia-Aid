@@ -346,7 +346,9 @@ export default function WaterSortScreen() {
 
   const handleFinish = () => {
     const timeSpent = Math.round((Date.now() - startTime) / 1000);
-    const accuracy = Math.min(100, Math.round((score / Math.max(1, pours)) * 10));
+    // accuracy = how many pours were clean (no undos penalty)
+    // score = 15 per clean pour, -10 per undo; maxScore = pours * 15
+    const accuracy = Math.min(100, Math.max(0, Math.round((score / Math.max(1, pours * 15)) * 100)));
     const xpEarned = Math.round(score / 5) + 10;
     router.replace(
       `/games/complete?gameId=${gameId}&gameType=water-sort&score=${score}&accuracy=${accuracy}&timeSpent=${timeSpent}&level=${playingLevel}&xpEarned=${xpEarned}`

@@ -1,7 +1,7 @@
 export const GAME_INFO: Record<string, { title: string; description: string; color: string; icon: string; benefit: string }> = {
   'card-match': {
     title: 'Card Match',
-    description: 'Find matching word pairs',
+    description: 'Find matching animal pairs',
     color: '#6366F1',
     icon: 'copy',
     benefit: 'Improves visual memory & word recognition',
@@ -26,13 +26,6 @@ export const GAME_INFO: Record<string, { title: string; description: string; col
     color: '#F59E0B',
     icon: 'shuffle',
     benefit: 'Enhances phonological processing',
-  },
-  'cake-tower': {
-    title: 'Cake Tower',
-    description: 'Stack & time letter blocks',
-    color: '#EC4899',
-    icon: 'layers',
-    benefit: 'Develops sequencing & visual tracking',
   },
   'sequence': {
     title: 'Memory Match',
@@ -91,12 +84,13 @@ export const DYSLEXIA_LEVELS: Record<number, { label: string; description: strin
   3: { label: 'Severe', description: 'Significant reading challenges', color: '#EF4444' },
 };
 
+// Games ranked by most beneficial for each dyslexia type
 export const GAME_ROTATIONS: Record<string, string[]> = {
   phonological:   ['word-scramble', 'balloon-pop', 'letter-sort', 'card-match', 'sequence', 'fruit-crush', 'water-sort'],
-  visual:         ['card-match', 'water-sort', 'cake-tower', 'balloon-pop', 'sequence', 'fruit-crush', 'letter-sort'],
+  visual:         ['card-match', 'water-sort', 'letter-sort', 'balloon-pop', 'sequence', 'fruit-crush', 'word-scramble'],
   'rapid-naming': ['balloon-pop', 'sequence', 'card-match', 'word-scramble', 'letter-sort', 'fruit-crush', 'water-sort'],
-  surface:        ['word-scramble', 'card-match', 'letter-sort', 'balloon-pop', 'cake-tower', 'water-sort', 'fruit-crush'],
-  mixed:          ['card-match', 'balloon-pop', 'letter-sort', 'word-scramble', 'cake-tower', 'sequence', 'fruit-crush'],
+  surface:        ['word-scramble', 'card-match', 'letter-sort', 'balloon-pop', 'sequence', 'water-sort', 'fruit-crush'],
+  mixed:          ['card-match', 'balloon-pop', 'letter-sort', 'word-scramble', 'water-sort', 'sequence', 'fruit-crush'],
   default:        ['card-match', 'balloon-pop', 'letter-sort', 'word-scramble', 'sequence', 'water-sort', 'fruit-crush'],
 };
 

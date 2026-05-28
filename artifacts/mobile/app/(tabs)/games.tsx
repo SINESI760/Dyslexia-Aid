@@ -7,7 +7,7 @@ import { useColors } from '@/hooks/useColors';
 import { useUser } from '@/context/UserContext';
 import { useGame } from '@/context/GameContext';
 import { GameCard } from '@/components/GameCard';
-import { GAME_INFO } from '@/constants/games';
+import { GAME_INFO, GAME_ROTATIONS } from '@/constants/games';
 import * as Haptics from 'expo-haptics';
 
 export default function GamesScreen() {
@@ -29,7 +29,16 @@ export default function GamesScreen() {
 
   const allDone = completedCount >= games.length && games.length > 0;
 
-  const gameLibrary = Object.entries(GAME_INFO);
+  // Sort All Games by relevance to the user's dyslexia type
+  const typeRotation = GAME_ROTATIONS[profile?.dyslexiaType ?? 'default'] || GAME_ROTATIONS.default;
+  const gameLibrary = Object.entries(GAME_INFO).sort(([a], [b]) => {
+    const ai = typeRotation.indexOf(a);
+    const bi = typeRotation.indexOf(b);
+    if (ai === -1 && bi === -1) return 0;
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

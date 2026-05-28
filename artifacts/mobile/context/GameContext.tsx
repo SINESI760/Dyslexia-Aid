@@ -45,7 +45,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         const parsed = JSON.parse(stored) as DailyProgress;
         const today = new Date().toDateString();
         if (parsed.date === today) {
-          setDailyProgress(parsed);
+          // Strip any removed games (e.g. cake-tower) from persisted queues
+          const REMOVED_GAMES = ['cake-tower'];
+          const filtered = parsed.games.filter((g) => !REMOVED_GAMES.includes(g.gameType));
+          const completedCount = filtered.filter((g) => g.completed).length;
+          const cleaned: DailyProgress = { ...parsed, games: filtered, completedCount };
+          if (filtered.length !== parsed.games.length) {
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+          }
+          setDailyProgress(cleaned);
         }
       }
     } catch {
